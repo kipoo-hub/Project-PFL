@@ -15,7 +15,8 @@ export const serviceData = [
 ];
 
 export const topDokter = [
-  { nama:'Dr. Rizal',    spesialis:'Bedah & Umum',   pasien:89, rating:4.9, color:'#3b5bdb' },
-  { nama:'Dr. Maya',     spesialis:'Dermatologi',     pasien:72, rating:4.8, color:'#7048e8' },
-  { nama:'Dr. Andika',   spesialis:'Ortopedi',        pasien:61, rating:4.7, color:'#0ca678' },
+  { nama:'Dr. Taufiq',    spesialis:'Bedah & Umum',   pasien:89, rating:4.9, color:'#3b5bdb' },
+  { nama:'Dr. Johan',     spesialis:'Dermatologi',     pasien:72, rating:4.8, color:'#7048e8' },
+  { nama:'Dr. Vera',   spesialis:'Ortopedi',        pasien:61, rating:4.7, color:'#0ca678' },
+  { nama:'Dr. Fajar',   spesialis:'Ortopedi',        pasien:67, rating:4.7, color:'#0ca678' },
 ];

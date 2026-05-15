@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { PawPrint } from 'lucide-react';
 
 export default function AuthLayout() {
@@ -9,62 +9,111 @@ export default function AuthLayout() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #1a1d2e 0%, #252840 50%, #1e2240 100%)',
-      padding: '24px',
-      position: 'relative',
-      overflow: 'hidden',
+      background: '#5d87e6', // Biru Royal Utama
+      padding: '20px',
+      fontFamily: "'Inter', sans-serif"
     }}>
-      {/* Background decoration */}
-      <div style={{ position: 'absolute', top: -100, left: -100, width: 400, height: 400, borderRadius: '50%', background: 'rgba(59,91,219,0.08)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', bottom: -80, right: -80, width: 300, height: 300, borderRadius: '50%', background: 'rgba(112,72,232,0.08)', pointerEvents: 'none' }} />
-
+      
+      {/* Container Utama */}
       <div style={{
         background: 'white',
-        borderRadius: 20,
-        boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
+        borderRadius: 32,
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         width: '100%',
-        maxWidth: 440,
+        maxWidth: '1000px',
+        display: 'flex',
+        minHeight: '600px',
         overflow: 'hidden',
-        position: 'relative',
-        zIndex: 1,
       }}>
-        {/* Brand Header */}
+        
+        {/* KOLOM KIRI: Visual & Branding */}
         <div style={{
-          background: 'linear-gradient(135deg, #1a1d2e, #252840)',
-          padding: '28px 32px 24px',
+          flex: 1,
+          background: '#a5c0f3',
+          padding: '60px 40px',
           display: 'flex',
-          alignItems: 'center',
-          gap: 12,
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center', // Membuat konten kiri juga di tengah
+          textAlign: 'center'
         }}>
+          <h1 style={{ fontSize: 28, color: 'white', fontWeight: 500, lineHeight: 1.2 }}>
+            Need pet care<br />for your buddy?
+          </h1>
+          <h2 style={{ fontSize: 36, fontWeight: 800, color: '#4a71cc', margin: '10px 0 40px' }}>
+            PetCare Clinic<br />will help you.
+          </h2>
+
           <div style={{
-            width: 42, height: 42, borderRadius: 12,
-            background: 'linear-gradient(135deg, #3b5bdb, #7048e8)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 14px rgba(59,91,219,0.5)',
+            width: 160,
+            height: 160,
+            borderRadius: 40,
+            background: '#5d87e6',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 15px 30px rgba(0,0,0,0.1)',
           }}>
-            <PawPrint size={22} color="white" />
+            <PawPrint size={90} color="white" />
           </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 17, color: '#ffffff', lineHeight: 1.2 }}>PetCare Clinic</div>
-            <div style={{ fontSize: 12, color: 'rgba(160,174,192,0.8)', lineHeight: 1.2 }}>Klinik Hewan Terpercaya</div>
+          
+          <div style={{ marginTop: 'auto', color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>
+            petcareclinic.com/dashboard
           </div>
         </div>
 
-        {/* Page Content (Login / Register / Forgot) */}
-        <div style={{ padding: '32px' }}>
-          <Outlet />
-        </div>
-
-        {/* Footer */}
-        <p style={{
-          textAlign: 'center',
-          fontSize: 12,
-          color: '#9ca3af',
-          padding: '0 32px 24px',
-          marginTop: 0,
+        {/* KOLOM KANAN: Form (Dibuat ke Tengah) */}
+        <div style={{
+          flex: 1.2,
+          padding: '40px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',    // Mengetengahkan secara horizontal
+          justifyContent: 'center',   // Mengetengahkan secara vertikal
+          background: 'white',
+          position: 'relative'
         }}>
-          © 2025 PetCare Clinic. All rights reserved.
-        </p>
+          
+          {/* Logo Kecil di Atas Form */}
+          <div style={{ 
+            marginBottom: 32, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: 8 
+          }}>
+             <div style={{ 
+               background: '#000', 
+               padding: 8, 
+               borderRadius: 10,
+               display: 'flex',
+               alignItems: 'center',
+               justifyContent: 'center'
+             }}>
+                <PawPrint size={20} color="white" />
+             </div>
+             <span style={{ fontWeight: 700, fontSize: 14, color: '#1a1a1a' }}>PetCare Clinic</span>
+          </div>
+
+          {/* Wrapper untuk Form (Outlet) */}
+          <div style={{ 
+            width: '100%', 
+            maxWidth: '360px', // Membatasi lebar form agar rapi di tengah
+          }}>
+            <Outlet />
+          </div>
+
+          {/* Footer Copyright */}
+          <p style={{
+            position: 'absolute',
+            bottom: 24,
+            fontSize: 11,
+            color: '#94a3b8',
+          }}>
+            © 2026 PetCare Clinic. All rights reserved.
+          </p>
+        </div>
+
       </div>
     </div>
   );

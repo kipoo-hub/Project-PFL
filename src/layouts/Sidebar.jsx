@@ -2,15 +2,17 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CalendarDays,
-  BarChart3, Settings, PawPrint, LogOut, ChevronRight,
+  BarChart3, Settings, PawPrint, LogOut
 } from 'lucide-react';
 
+// NavItems disesuaikan persis dengan fitur kamu:
+// Dashboard, Pasien, Jadwal Temu, Analitik, Pengaturan
 const navItems = [
-  { path: '/',           label: 'Dashboard',   icon: LayoutDashboard },
-  { path: '/pasien',     label: 'Pasien',       icon: Users },
-  { path: '/jadwal',     label: 'Jadwal Temu',  icon: CalendarDays },
-  { path: '/analitik',  label: 'Analitik',     icon: BarChart3 },
-  { path: '/pengaturan', label: 'Pengaturan',   icon: Settings },
+  { path: '/',           label: 'Dashboard',    icon: LayoutDashboard },
+  { path: '/pasien',      label: 'Pasien',       icon: Users },
+  { path: '/jadwal',      label: 'Jadwal Temu',  icon: CalendarDays },
+  { path: '/analitik',    label: 'Analitik',     icon: BarChart3 },
+  { path: '/pengaturan',  label: 'Pengaturan',   icon: Settings },
 ];
 
 const Sidebar = () => {
@@ -23,86 +25,63 @@ const Sidebar = () => {
 
   return (
     <aside style={{
-      width: 'var(--sidebar-width)',
+      width: '260px',
       minHeight: '100vh',
-      background: 'var(--bg-sidebar)',
+      background: '#ffffff', // Tema putih bersih
       display: 'flex',
       flexDirection: 'column',
-      flexShrink: 0,
+      borderRight: '1px solid #f0f0f0',
       position: 'sticky',
       top: 0,
       height: '100vh',
-      overflowY: 'auto',
     }}>
       {/* Branding */}
-      <div style={{ padding: '24px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-          <div style={{
-            width: 38, height: 38, borderRadius: 10,
-            background: 'linear-gradient(135deg, #3b5bdb, #7048e8)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(59,91,219,0.4)', flexShrink: 0,
-          }}>
-            <PawPrint size={20} color="white" />
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: '#fff', lineHeight: 1.2 }}>PetCare Clinic</div>
-            <div style={{ fontSize: 11, color: 'var(--text-sidebar)', lineHeight: 1.2 }}>Klinik Hewan Terpercaya</div>
-          </div>
-        </Link>
+      <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: '#000000', 
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <PawPrint size={18} color="white" />
+        </div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#1a1a1a', lineHeight: 1 }}>PetCare Clinic</div>
+          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Dashboard Analytics</div>
+        </div>
       </div>
 
-      {/* Label */}
-      <div style={{ padding: '20px 20px 8px' }}>
-        <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(160,174,192,0.5)' }}>
+      {/* Label Menu Utama */}
+      <div style={{ padding: '20px 24px 8px' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#cbd5e1', letterSpacing: '0.05em' }}>
           Menu Utama
         </span>
       </div>
 
-      {/* Nav */}
+      {/* Navigasi - Sesuai fitur kamu */}
       <nav style={{ flex: 1, padding: '0 12px' }}>
-        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {navItems.map(item => {
             const Icon = item.icon;
-            // Active: exact match for "/" and startsWith for others
-            const isActive = item.path === '/'
-              ? location.pathname === '/'
+            const isActive = item.path === '/' 
+              ? location.pathname === '/' 
               : location.pathname.startsWith(item.path);
 
             return (
               <li key={item.path}>
                 <Link
-                  id={`sidebar-nav-${item.path.replace('/', '') || 'dashboard'}`}
                   to={item.path}
                   style={{
-                    width: '100%', display: 'flex', alignItems: 'center',
-                    justifyContent: 'space-between', gap: 10,
-                    padding: '10px 12px', borderRadius: 8,
-                    background: isActive ? 'linear-gradient(135deg, var(--accent-blue), #4c6ef5)' : 'transparent',
-                    color: isActive ? '#fff' : 'var(--text-sidebar)',
-                    fontSize: 14, fontWeight: isActive ? 600 : 400,
-                    transition: 'all 0.2s',
-                    boxShadow: isActive ? '0 4px 12px rgba(59,91,219,0.3)' : 'none',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 16px', borderRadius: 8,
+                    background: isActive ? '#f1f5f9' : 'transparent', 
+                    color: isActive ? '#1e293b' : '#64748b',
+                    fontSize: 13, fontWeight: isActive ? 600 : 500,
                     textDecoration: 'none',
-                  }}
-                  onMouseEnter={e => {
-                    if (!isActive) {
-                      e.currentTarget.style.background = 'var(--bg-sidebar-hover)';
-                      e.currentTarget.style.color = '#fff';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (!isActive) {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = 'var(--text-sidebar)';
-                    }
+                    transition: 'all 0.2s ease',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Icon size={18} />
-                    <span>{item.label}</span>
-                  </div>
-                  {isActive && <ChevronRight size={14} />}
+                  <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                  <span>{item.label}</span>
                 </Link>
               </li>
             );
@@ -110,32 +89,27 @@ const Sidebar = () => {
         </ul>
       </nav>
 
-      {/* Bottom */}
-      <div style={{ padding: '16px 12px 24px', borderTop: '1px solid rgba(255,255,255,0.07)', marginTop: 'auto' }}>
-        <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: 14, marginBottom: 12 }}>
-          <div style={{ fontSize: 11, color: 'rgba(160,174,192,0.7)', marginBottom: 8 }}>Status Klinik</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#0ca678', boxShadow: '0 0 6px rgba(12,166,120,0.6)' }} />
-            <span style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 500 }}>Buka — Hari ini</span>
+      {/* Footer Sidebar - Profil & Logout */}
+      <div style={{ padding: '16px', borderTop: '1px solid #f1f5f9' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ 
+            width: 32, height: 32, borderRadius: '50%', 
+            background: '#e2e8f0', display: 'flex', 
+            alignItems: 'center', justifyContent: 'center' 
+          }}>
+            <Users size={16} color="#64748b" />
           </div>
-          <div style={{ fontSize: 11, color: 'rgba(160,174,192,0.6)', marginTop: 4 }}>08:00 – 20:00 WIB</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>Dr. Muhammad Taufiq</div>
+            <div style={{ fontSize: 10, color: '#94a3b8' }}>Veterinario Principal</div>
+          </div>
+          <button 
+            onClick={handleLogout}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+          >
+            <LogOut size={16} />
+          </button>
         </div>
-
-        <button
-          id="sidebar-logout-btn"
-          onClick={handleLogout}
-          style={{
-            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-            padding: '10px 12px', borderRadius: 8, border: 'none',
-            background: 'transparent', color: 'var(--text-sidebar)',
-            cursor: 'pointer', fontSize: 14, transition: 'all 0.2s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(224,49,49,0.15)'; e.currentTarget.style.color = '#fc8181'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-sidebar)'; }}
-        >
-          <LogOut size={16} />
-          <span>Keluar</span>
-        </button>
       </div>
     </aside>
   );

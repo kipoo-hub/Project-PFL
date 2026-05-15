@@ -129,11 +129,11 @@ const Header = () => {
             fontSize: 13,
             flexShrink: 0,
           }}>
-            DR
+            DT
           </div>
           <div style={{ textAlign: 'left' }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-              Dr. Rizal
+              Dr Taufiq
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.2 }}>
               Dokter Hewan

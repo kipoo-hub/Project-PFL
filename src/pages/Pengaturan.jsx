@@ -44,7 +44,7 @@ const Toggle = ({ checked, onChange, id }) => (
 
 const Pengaturan = () => {
   const [saved, setSaved] = useState(false);
-  const [profile, setProfile] = useState({ nama: 'Dr. Rizal Firmansyah', email: 'rizal@petcareclinic.com', telepon: '0812-1111-2222', spesialis: 'Bedah & Umum' });
+  const [profile, setProfile] = useState({ nama: 'Dr Muhammad Taufiq', email: 'muhammad.taufiq@petcareclinic.com', telepon: '0812-1111-2222', spesialis: 'Bedah & Umum' });
   const [klinik, setKlinik] = useState({ namaKlinik: 'PetCare Clinic', alamat: 'Jl. Veteriner No. 12, Jakarta Selatan', jamBuka: '08:00', jamTutup: '20:00' });
   const [notif, setNotif] = useState({ jadwalBaru: true, pasienKritis: true, laporanHarian: false, promoEmail: false });
 
