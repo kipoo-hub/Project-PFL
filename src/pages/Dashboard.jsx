@@ -146,8 +146,8 @@ const Dashboard = () => {
       background: 'var(--bg-app)',
     }}>
       <PageHeader
-        title="Dashboard Veterinario"
-        subtitle="Selamat datang kembali, Dr. Rizal! Berikut ringkasan klinik hari ini."
+        title="Dashboard PetCare Clinic"
+        subtitle="Selamat datang kembali, Dr. Taufiq! Berikut ringkasan klinik hari ini."
       />
 
       {/* KPI Cards */}
@@ -402,7 +402,7 @@ const Dashboard = () => {
                   onMouseEnter={e => e.currentTarget.style.background = '#fafbff'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)', fontFamily: "'Inter', sans-serif" }}>
                     {apt.id}
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
