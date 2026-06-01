@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CalendarDays,
-  BarChart3, Settings, PawPrint, LogOut, ChevronRight, Component,
+  BarChart3, Settings, PawPrint, LogOut, ChevronRight,
 } from 'lucide-react';
 
 const navItems = [
@@ -11,7 +11,6 @@ const navItems = [
   { path: '/jadwal',     label: 'Jadwal Temu',  icon: CalendarDays },
   { path: '/analitik',  label: 'Analitik',     icon: BarChart3 },
   { path: '/pengaturan', label: 'Pengaturan',   icon: Settings },
-  { path: '/components', label: 'Components',   icon: Component },
 ];
 
 const Sidebar = () => {
