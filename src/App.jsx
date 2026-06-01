@@ -12,6 +12,7 @@ const Pasien = lazy(() => import('./pages/Pasien'));
 const JadwalTemu = lazy(() => import('./pages/JadwalTemu'));
 const Analitik = lazy(() => import('./pages/Analitik'));
 const Pengaturan = lazy(() => import('./pages/Pengaturan'));
+const Components = lazy(() => import('./pages/Components'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Auth pages — lazy loaded
@@ -32,6 +33,7 @@ function App() {
           <Route path="/jadwal" element={<JadwalTemu />} />
           <Route path="/analitik" element={<Analitik />} />
           <Route path="/pengaturan" element={<Pengaturan />} />
+          <Route path="/components" element={<Components />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 

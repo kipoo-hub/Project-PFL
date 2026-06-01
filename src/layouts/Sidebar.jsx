@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CalendarDays,
-  BarChart3, Settings, PawPrint, LogOut
+  BarChart3, Settings, PawPrint, LogOut, Component
 } from 'lucide-react';
 
 // NavItems disesuaikan persis dengan fitur kamu:
@@ -13,6 +13,7 @@ const navItems = [
   { path: '/jadwal',      label: 'Jadwal Temu',  icon: CalendarDays },
   { path: '/analitik',    label: 'Analitik',     icon: BarChart3 },
   { path: '/pengaturan',  label: 'Pengaturan',   icon: Settings },
+  { path: '/components',  label: 'Components',   icon: Component },
 ];
 
 const Sidebar = () => {
