@@ -20,6 +20,13 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setTimeout(() => {
+      const mockUser = {
+        name: email.includes('admin') ? 'Admin Klinik' : 'Dr. Muhammad Taufiq',
+        role: email.includes('admin') ? 'Administrator' : 'Veterinario Principal',
+        initials: email.includes('admin') ? 'AK' : 'DT',
+        email: email
+      };
+      localStorage.setItem('user', JSON.stringify(mockUser));
       setLoading(false);
       navigate('/');
     }, 1200);

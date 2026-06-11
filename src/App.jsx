@@ -13,7 +13,11 @@ const JadwalTemu = lazy(() => import('./pages/JadwalTemu'));
 const Analitik = lazy(() => import('./pages/Analitik'));
 const Pengaturan = lazy(() => import('./pages/Pengaturan'));
 const Components = lazy(() => import('./pages/Components'));
+const Profile = lazy(() => import('./pages/Profile'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const Marketing = lazy(() => import('./pages/Marketing'));
+const Sales = lazy(() => import('./pages/Sales'));
+const Service = lazy(() => import('./pages/Service'));
 
 // Auth pages — lazy loaded
 const Login = lazy(() => import('./pages/auth/Login'));
@@ -34,6 +38,11 @@ function App() {
           <Route path="/analitik" element={<Analitik />} />
           <Route path="/pengaturan" element={<Pengaturan />} />
           <Route path="/components" element={<Components />} />
+          <Route path="/profile" element={<Profile />} />
+          {/* CRM Routes */}
+          <Route path="/marketing" element={<Marketing />} />
+          <Route path="/sales" element={<Sales />} />
+          <Route path="/service" element={<Service />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 

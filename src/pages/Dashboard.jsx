@@ -1,341 +1,222 @@
 import React from 'react';
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
+  Bar, BarChart, Line, LineChart, Pie, PieChart, Cell,
+  XAxis, YAxis, CartesianGrid
 } from 'recharts';
 import {
-  Users, CalendarCheck, DollarSign, AlertTriangle,
-  ArrowUpRight,
+  Users, CalendarCheck, DollarSign, AlertTriangle, ArrowUpRight,
 } from 'lucide-react';
+
+// Import Shadcn UI Chart & Card Components
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
 import PageHeader from '../components/PageHeader';
 import KpiCard from '../components/DataDisplay/KpiCard';
 import StatusBadge from '../components/DataDisplay/StatusBadge';
-import { monthlyAppointments, revenueData, speciesData, recentAppointments } from '../data/dashboard';
+import { 
+  monthlyAppointments, 
+  revenueData, 
+  speciesData, 
+  recentAppointments 
+} from '../data/dashboard';
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Chart Configs (Shadcn UI Standard) ──────────────────────────────────────
 
+const appointmentConfig = {
+  jumlah: {
+    label: "Kunjungan",
+    color: "hsl(226 70% 55%)",
+  },
+};
 
-const formatRupiah = (val) =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+const revenueConfig = {
+  pendapatan: {
+    label: "Pendapatan",
+    color: "hsl(162 86% 35%)",
+  },
+};
 
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div style={{
-        background: 'white',
-        border: '1px solid var(--border-color)',
-        borderRadius: 8,
-        padding: '10px 14px',
-        boxShadow: 'var(--shadow-md)',
-        fontSize: 13,
-      }}>
-        <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        {payload.map((p, i) => (
-          <p key={i} style={{ color: p.color }}>
-            {p.name === 'pendapatan' ? formatRupiah(p.value) : `${p.value} kunjungan`}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
+const speciesConfig = {
+  Kucing: { label: "Kucing", color: "#3b5bdb" },
+  Anjing: { label: "Anjing", color: "#0ca678" },
+  Burung: { label: "Burung", color: "#f59f00" },
+  Lainnya: { label: "Lainnya", color: "#748ffc" },
 };
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
+
 const Dashboard = () => {
   return (
-    <div style={{
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      padding: 24,
-      overflowY: 'auto',
-      background: 'var(--bg-app)',
-    }}>
+    <div className="flex-1 flex flex-col p-6 overflow-y-auto bg-slate-50/50 gap-6">
+      {/* Menggunakan gap-6 sebagai ganti space-y-6 untuk jarak vertikal yang lebih solid */}
       <PageHeader
         title="Dashboard PetCare Clinic"
         subtitle="Selamat datang kembali, Dr. Taufiq! Berikut ringkasan klinik hari ini."
       />
 
       {/* KPI Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: 16,
-        marginBottom: 24,
-      }}>
-        <KpiCard
-          title="Total Pasien"
-          value="1.284"
-          subtitle="Pasien terdaftar"
-          icon={Users}
-          iconBg="var(--accent-blue-light)"
-          iconColor="var(--accent-blue)"
-          trend="up"
-          trendValue="+12%"
-        />
-        <KpiCard
-          title="Kunjungan Hari Ini"
-          value="18"
-          subtitle="6 tersisa hari ini"
-          icon={CalendarCheck}
-          iconBg="var(--accent-teal-light)"
-          iconColor="var(--accent-teal)"
-          trend="up"
-          trendValue="+8%"
-        />
-        <KpiCard
-          title="Pendapatan Bulan Ini"
-          value="Rp 31,2 Jt"
-          subtitle="Target: Rp 35 Jt"
-          icon={DollarSign}
-          iconBg="var(--accent-orange-light)"
-          iconColor="var(--accent-orange)"
-          trend="up"
-          trendValue="+20%"
-        />
-        <KpiCard
-          title="Kasus Kritis"
-          value="3"
-          subtitle="Perlu penanganan segera"
-          icon={AlertTriangle}
-          iconBg="var(--accent-red-light)"
-          iconColor="var(--accent-red)"
-          trend="down"
-          trendValue="-2"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KpiCard title="Total Pasien" value="1.284" subtitle="Pasien terdaftar" icon={Users} trend="up" trendValue="+12%" />
+        <KpiCard title="Kunjungan Hari Ini" value="18" subtitle="6 tersisa hari ini" icon={CalendarCheck} trend="up" trendValue="+8%" />
+        <KpiCard title="Pendapatan Bulan Ini" value="Rp 31,2 Jt" subtitle="Target: Rp 35 Jt" icon={DollarSign} trend="up" trendValue="+20%" />
+        <KpiCard title="Kasus Kritis" value="3" subtitle="Perlu penanganan segera" icon={AlertTriangle} trend="down" trendValue="-2" />
       </div>
 
       {/* Charts Row */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr 340px',
-        gap: 16,
-        marginBottom: 24,
-      }}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
         {/* Bar Chart: Monthly Appointments */}
-        <div style={{
-          background: 'var(--bg-card)',
-          borderRadius: 'var(--radius-md)',
-          padding: '20px 22px',
-          boxShadow: 'var(--shadow-sm)',
-          border: '1px solid var(--border-color)',
-        }}>
-          <div style={{ marginBottom: 16 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Kunjungan per Bulan
-            </h3>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              Tahun 2025
-            </p>
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={monthlyAppointments} barSize={20}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={30} />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(59,91,219,0.05)' }} />
-              <Bar dataKey="jumlah" fill="#3b5bdb" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <Card className="flex flex-col shadow-sm border-slate-200 overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold text-slate-800">Kunjungan per Bulan</CardTitle>
+            <CardDescription className="text-xs text-slate-500">Tahun 2025</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 pb-6">
+            <ChartContainer config={appointmentConfig} className="h-[320px] w-full mt-4">
+              <BarChart data={monthlyAppointments} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={11} dy={10} />
+                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                <Bar dataKey="jumlah" fill="var(--color-jumlah)" radius={[4, 4, 0, 0]} barSize={32} />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
 
         {/* Line Chart: Revenue */}
-        <div style={{
-          background: 'var(--bg-card)',
-          borderRadius: 'var(--radius-md)',
-          padding: '20px 22px',
-          boxShadow: 'var(--shadow-sm)',
-          border: '1px solid var(--border-color)',
-        }}>
-          <div style={{ marginBottom: 16 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Tren Pendapatan
-            </h3>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              11 bulan terakhir
-            </p>
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={revenueData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-              <XAxis dataKey="bulan" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-              <YAxis
-                tick={{ fontSize: 11, fill: '#9ca3af' }}
-                axisLine={false}
-                tickLine={false}
-                width={50}
-                tickFormatter={v => `${(v / 1000000).toFixed(0)}Jt`}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Line
-                type="monotone"
-                dataKey="pendapatan"
-                stroke="#0ca678"
-                strokeWidth={2.5}
-                dot={{ r: 3, fill: '#0ca678', strokeWidth: 0 }}
-                activeDot={{ r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <Card className="flex flex-col shadow-sm border-slate-200 overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold text-slate-800">Tren Pendapatan</CardTitle>
+            <CardDescription className="text-xs text-slate-500">11 bulan terakhir</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 pb-6">
+            <ChartContainer config={revenueConfig} className="h-[320px] w-full mt-4">
+              <LineChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="bulan" tickLine={false} axisLine={false} fontSize={11} dy={10} />
+                <YAxis 
+                  tickLine={false} 
+                  axisLine={false} 
+                  fontSize={11} 
+                  width={45}
+                  tickFormatter={(v) => `${(v / 1000000).toFixed(0)}Jt`} 
+                />
+                <ChartTooltip content={<ChartTooltipContent indicator="line" labelFormatter={(v) => `Bulan ${v}`} />} />
+                <Line 
+                  type="monotone" 
+                  dataKey="pendapatan" 
+                  stroke="var(--color-pendapatan)" 
+                  strokeWidth={2.5} 
+                  dot={{ r: 4, fill: "var(--color-pendapatan)", strokeWidth: 2 }} 
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
 
         {/* Pie Chart: Species */}
-        <div style={{
-          background: 'var(--bg-card)',
-          borderRadius: 'var(--radius-md)',
-          padding: '20px 22px',
-          boxShadow: 'var(--shadow-sm)',
-          border: '1px solid var(--border-color)',
-        }}>
-          <div style={{ marginBottom: 16 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Distribusi Spesies
-            </h3>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              Dari total pasien
-            </p>
-          </div>
-          <ResponsiveContainer width="100%" height={140}>
-            <PieChart>
-              <Pie
-                data={speciesData}
-                cx="50%"
-                cy="50%"
-                innerRadius={40}
-                outerRadius={65}
-                paddingAngle={3}
-                dataKey="value"
-              >
-                {speciesData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => `${value}%`} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-            {speciesData.map(item => (
-              <div key={item.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: 2, background: item.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{item.name}</span>
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{item.value}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Appointments Table */}
-      <div style={{
-        background: 'var(--bg-card)',
-        borderRadius: 'var(--radius-md)',
-        boxShadow: 'var(--shadow-sm)',
-        border: '1px solid var(--border-color)',
-        overflow: 'hidden',
-      }}>
-        {/* Table Header */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '18px 22px',
-          borderBottom: '1px solid var(--border-color)',
-        }}>
-          <div>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Jadwal Kunjungan Hari Ini
-            </h3>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              {recentAppointments.length} kunjungan terjadwal
-            </p>
-          </div>
-          <button
-            id="dashboard-see-all-btn"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              borderRadius: 6,
-              border: 'none',
-              background: 'var(--accent-blue-light)',
-              color: 'var(--accent-blue)',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = '#dde4ff'}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--accent-blue-light)'}
-          >
-            Lihat Semua
-            <ArrowUpRight size={13} />
-          </button>
-        </div>
-
-        {/* Table */}
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#fafafa' }}>
-                {['ID', 'Pemilik', 'Hewan', 'Spesies', 'Jenis Layanan', 'Waktu', 'Status'].map(col => (
-                  <th key={col} style={{
-                    padding: '10px 16px',
-                    textAlign: 'left',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid var(--border-color)',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {recentAppointments.map((apt, i) => (
-                <tr
-                  key={apt.id}
-                  style={{
-                    borderBottom: i < recentAppointments.length - 1 ? '1px solid var(--border-color)' : 'none',
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#fafbff'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        <Card className="flex flex-col shadow-sm border-slate-200 overflow-hidden">
+          <CardHeader className="pb-0">
+            <CardTitle className="text-base font-semibold text-slate-800">Distribusi Spesies</CardTitle>
+            <CardDescription className="text-xs text-slate-500">Dari total pasien</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col justify-center pb-6 mt-4">
+            <ChartContainer config={speciesConfig} className="h-[220px] w-full">
+              <PieChart margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                <Pie
+                  data={speciesData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={70}
+                  outerRadius={100}
+                  paddingAngle={5}
                 >
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)', fontFamily: "'Inter', sans-serif" }}>
-                    {apt.id}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                    {apt.pemilik}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>
-                    {apt.hewan}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
-                    {apt.spesies}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
-                    {apt.jenis}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                    {apt.waktu} WIB
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <StatusBadge status={apt.status} />
-                  </td>
-                </tr>
+                  {speciesData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ChartContainer>
+            <div className="mt-8 grid grid-cols-2 gap-y-3 gap-x-2 px-2">
+              {speciesData.map(item => (
+                <div key={item.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+                    <span className="text-xs font-medium text-slate-600">{item.name}</span>
+                  </div>
+                  <span className="text-xs font-bold text-slate-800">{item.value}%</span>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Appointments Table Wrapper */}
+      <Card className="shadow-sm border-slate-200 overflow-hidden">
+        {/* Header flex-row agar berdampingan rapi tanpa memencet teks */}
+        <CardHeader className="flex flex-row items-center justify-between p-6 border-b border-slate-100 space-y-0">
+          <div className="space-y-1">
+            <CardTitle className="text-base font-semibold text-slate-800">
+              Jadwal Kunjungan Hari Ini
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-500">
+              {recentAppointments.length} kunjungan terjadwal
+            </CardDescription>
+          </div>
+          <button className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-bold hover:bg-emerald-100 transition-colors">
+            Lihat Semua <ArrowUpRight size={15} strokeWidth={2.5} />
+          </button>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse min-w-[700px]">
+              <thead>
+                <tr className="bg-slate-50/50">
+                  {['ID', 'Pemilik', 'Hewan', 'Spesies', 'Jenis Layanan', 'Waktu', 'Status'].map(col => (
+                    <th 
+                      key={col} 
+                      className="px-6 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100"
+                    >
+                      {col}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {recentAppointments.map((apt) => (
+                  <tr key={apt.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4 text-xs text-slate-400 font-mono">{apt.id}</td>
+                    <td className="px-6 py-4 text-xs font-medium text-slate-800">{apt.pemilik}</td>
+                    <td className="px-6 py-4 text-xs font-bold text-slate-700">{apt.hewan}</td>
+                    <td className="px-6 py-4 text-xs text-slate-500">{apt.spesies}</td>
+                    <td className="px-6 py-4 text-xs text-slate-500">{apt.jenis}</td>
+                    <td className="px-6 py-4 text-xs font-semibold text-slate-800">{apt.waktu} WIB</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={apt.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
