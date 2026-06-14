@@ -15,6 +15,7 @@ const Pengaturan = lazy(() => import('./pages/Pengaturan'));
 const Components = lazy(() => import('./pages/Components'));
 const Profile = lazy(() => import('./pages/Profile'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const GuestPage = lazy(() => import('./pages/guest/GuestPage'));
 const Marketing = lazy(() => import('./pages/Marketing'));
 const Sales = lazy(() => import('./pages/Sales'));
 const Service = lazy(() => import('./pages/Service'));
@@ -30,6 +31,8 @@ function App() {
   return (
     <Suspense fallback={<Loading />}>
       <Routes>
+        {/* Public route — no layout wrapper, accessible without login */}
+        <Route path="/guest" element={<GuestPage />} />
         {/* Route MainLayout — semua halaman dashboard */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Dashboard />} />
