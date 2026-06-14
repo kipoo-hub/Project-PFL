@@ -49,20 +49,46 @@
   --vet-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --vet-transition-slow: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
+  /* ── Full-width layout fix ──
+     #root uses display:flex (from index.css / dashboard layout).
+     We must override it here so the guest page fills the entire
+     viewport width rather than collapsing to its content width. */
+  display: block;          /* escape flex-child shrink-to-fit */
+  width: 100%;             /* always fill the flex parent */
+  min-width: 0;            /* allow shrinking below min-content */
+  /* ─────────────────────────── */
+
   font-family: var(--vet-font);
   color: var(--vet-gray-800);
   background: var(--vet-white);
   min-height: 100vh;
+  overflow-x: hidden;      /* prevent any stray absolute/blob bleed */
 }
 
 /* ============================================================
    UTILITY: CONTAINER
    ============================================================ */
+/* Inner content wrapper — keeps text readable on ultrawide screens.
+   Sections themselves are always width:100%; only this inner box is capped. */
 .guest-container {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1280px;   /* ~Tailwind max-w-7xl */
   margin: 0 auto;
   padding: 0 24px;
+}
+
+/* Ensure <main> inside guest-page doesn't shrink in flex context */
+.guest-page > main {
+  display: block;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .guest-container { padding: 0 64px; }
+}
+
+@media (min-width: 1280px) {
+  .guest-container { padding: 0 96px; }
 }
 
 /* ============================================================
@@ -372,6 +398,7 @@
    ============================================================ */
 .hero-section {
   position: relative;
+  width: 100%;           /* full-width background */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -675,6 +702,7 @@
    ============================================================ */
 .services-section {
   position: relative;
+  width: 100%;           /* full-width background */
   padding: 100px 0;
   background: var(--vet-gray-50);
   overflow: hidden;
@@ -820,6 +848,7 @@
    WHY US SECTION
    ============================================================ */
 .whyus-section {
+  width: 100%;           /* full-width background */
   padding: 100px 0;
   background: var(--vet-white);
 }
@@ -1023,6 +1052,7 @@
    ============================================================ */
 .cta-section {
   position: relative;
+  width: 100%;           /* full-width background */
   padding: 100px 0;
   background: linear-gradient(135deg, #064e3b 0%, #065f46 30%, #0c4a6e 70%, #0e7490 100%);
   overflow: hidden;
@@ -1161,6 +1191,7 @@
    FOOTER
    ============================================================ */
 .guest-footer {
+  width: 100%;           /* full-width background */
   background: var(--vet-gray-900);
   color: var(--vet-gray-300);
   font-family: var(--vet-font);
