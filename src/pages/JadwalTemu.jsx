@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 import { Plus, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, X, Check } from 'lucide-react';
 import { DAYS, MONTHS, allAppointments } from '../data/jadwal';
 import { crmState } from '../lib/crmState';
 
 const statusCfg = {
-  'Selesai':    { bg:'#e6fcf5', color:'#0ca678', icon: CheckCircle2 },
-  'Menunggu':   { bg:'#fff4e6', color:'#f76707', icon: Clock },
-  'Dibatalkan': { bg:'#fff5f5', color:'#e03131', icon: XCircle },
+  'Selesai':    { bg:'#C6F6D5', color:'#48BB78', icon: CheckCircle2 },
+  'Menunggu':   { bg:'#FEEBC8', color:'#ED8936', icon: Clock },
+  'Dibatalkan': { bg:'#FED7D7', color:'#F56565', icon: XCircle },
 };
 
 const StatusBadge = ({ status }) => {
   const c = statusCfg[status] || statusCfg.Menunggu;
   const Icon = c.icon;
   return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, background:c.bg, color:c.color, fontSize:11, fontWeight:600 }}>
+    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:20, background:c.bg, color:c.color, fontSize:11, fontWeight:700 }}>
       <Icon size={11} />{status}
     </span>
   );
@@ -23,12 +23,12 @@ const StatusBadge = ({ status }) => {
 const Modal = ({ show, onClose, selectedDate }) => {
   const [form, setForm] = useState({ hewan:'', pemilik:'', layanan:'Pemeriksaan', waktu:'08:00' });
   if (!show) return null;
-  const inputStyle = { width:'100%', padding:'9px 12px', border:'1px solid var(--border-color)', borderRadius:8, fontSize:13, outline:'none', background:'var(--bg-app)', boxSizing:'border-box' };
-  const labelStyle = { fontSize:12, fontWeight:600, color:'var(--text-secondary)', display:'block', marginBottom:6 };
+  const inputStyle = { width:'100%', padding:'9px 12px', border:'1px solid #E2E8F0', borderRadius:12, fontSize:13, outline:'none', background:'#F8F9FA', boxSizing:'border-box' };
+  const labelStyle = { fontSize:12, fontWeight:600, color:'#A0AEC0', display:'block', marginBottom:6 };
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
       <div style={{ background:'white', borderRadius:16, width:440, boxShadow:'var(--shadow-lg)', overflow:'hidden' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 24px', borderBottom:'1px solid var(--border-color)' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 24px', borderBottom:'1px solid #E2E8F0' }}>
           <h3 style={{ fontSize:15, fontWeight:700 }}>Tambah Janji Temu — {selectedDate}</h3>
           <button onClick={onClose} style={{ border:'none', background:'none', cursor:'pointer', color:'var(--text-muted)', padding:4 }}><X size={18} /></button>
         </div>
@@ -43,9 +43,9 @@ const Modal = ({ show, onClose, selectedDate }) => {
           </div>
           <div><label style={labelStyle}>Waktu</label><input type="time" value={form.waktu} onChange={e=>setForm(f=>({...f,waktu:e.target.value}))} style={inputStyle} /></div>
         </div>
-        <div style={{ display:'flex', justifyContent:'flex-end', gap:10, padding:'16px 24px', borderTop:'1px solid var(--border-color)' }}>
-          <button onClick={onClose} style={{ padding:'8px 16px', borderRadius:8, border:'1px solid var(--border-color)', background:'white', fontSize:13, cursor:'pointer' }}>Batal</button>
-          <button onClick={onClose} style={{ padding:'8px 20px', borderRadius:8, border:'none', background:'linear-gradient(135deg, var(--accent-blue),#4c6ef5)', color:'white', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+        <div style={{ display:'flex', justifyContent:'flex-end', gap:10, padding:'16px 24px', borderTop:'1px solid #E2E8F0' }}>
+          <button onClick={onClose} style={{ padding:'8px 16px', borderRadius:12, border:'1px solid #E2E8F0', background:'white', fontSize:13, cursor:'pointer' }}>Batal</button>
+          <button onClick={onClose} style={{ padding:'8px 20px', borderRadius:12, border:'none', background:'#4FD1C5', color:'white', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6, boxShadow:'0 4px 12px rgba(79,209,197,0.3)' }}>
             <Check size={14} /> Simpan
           </button>
         </div>
@@ -113,20 +113,18 @@ const JadwalTemu = () => {
   const selectedLabel = (() => {
     const d = new Date(selectedDate + 'T00:00:00');
     return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-  })();
-
-  return (
-    <div style={{ flex:1, padding:24, background:'var(--bg-app)', position: 'relative' }}>
+  })();  return (
+    <div style={{ flex:1, padding:24, background:'#F7F8FC', position: 'relative' }}>
       {successToast && (
         <div style={{
           position: 'fixed',
           top: 24,
           right: 24,
-          background: '#0ca678',
+          background: '#48BB78',
           color: 'white',
           padding: '12px 24px',
-          borderRadius: 8,
-          boxShadow: 'var(--shadow-lg)',
+          borderRadius: 12,
+          boxShadow: '0 4px 12px rgba(72,187,120,0.3)',
           zIndex: 9999,
           display: 'flex',
           alignItems: 'center',
@@ -141,14 +139,14 @@ const JadwalTemu = () => {
 
       <div style={{ display:'grid', gridTemplateColumns:'320px 1fr', gap:20 }}>
         {/* Calendar */}
-        <div style={{ background:'white', borderRadius:12, border:'1px solid var(--border-color)', boxShadow:'var(--shadow-sm)', padding:20, alignSelf:'start' }}>
+        <div style={{ background:'white', borderRadius:16, boxShadow:'0 2px 12px rgba(0,0,0,0.08)', padding:20, alignSelf:'start' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <button id="cal-prev-btn" onClick={prevMonth} style={{ border:'none', background:'var(--bg-app)', borderRadius:8, width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-secondary)' }}><ChevronLeft size={16}/></button>
-            <span style={{ fontWeight:700, fontSize:14, color:'var(--text-primary)' }}>{MONTHS[currentMonth.month]} {currentMonth.year}</span>
-            <button id="cal-next-btn" onClick={nextMonth} style={{ border:'none', background:'var(--bg-app)', borderRadius:8, width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-secondary)' }}><ChevronRight size={16}/></button>
+            <button id="cal-prev-btn" onClick={prevMonth} style={{ border:'none', background:'#F8F9FA', borderRadius:8, width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-secondary)' }}><ChevronLeft size={16}/></button>
+            <span style={{ fontWeight:700, fontSize:14, color:'#2D3748' }}>{MONTHS[currentMonth.month]} {currentMonth.year}</span>
+            <button id="cal-next-btn" onClick={nextMonth} style={{ border:'none', background:'#F8F9FA', borderRadius:8, width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-secondary)' }}><ChevronRight size={16}/></button>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, textAlign:'center' }}>
-            {DAYS.map(d => <div key={d} style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', padding:'4px 0', textTransform:'uppercase' }}>{d}</div>)}
+            {DAYS.map(d => <div key={d} style={{ fontSize:10, fontWeight:700, color:'#A0AEC0', padding:'4px 0', textTransform:'uppercase' }}>{d}</div>)}
             {Array(firstDay).fill(null).map((_,i) => <div key={`empty-${i}`} />)}
             {Array(daysInMonth).fill(null).map((_,i) => {
               const day = i + 1;
@@ -159,37 +157,37 @@ const JadwalTemu = () => {
               return (
                 <button key={day} id={`cal-day-${dateStr}`} onClick={() => setSelectedDate(dateStr)}
                   style={{ width:'100%', aspectRatio:'1', border:'none', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight: isSelected||isToday ? 700 : 400,
-                    background: isSelected ? 'var(--accent-blue)' : isToday ? 'var(--accent-blue-light)' : 'transparent',
-                    color: isSelected ? 'white' : isToday ? 'var(--accent-blue)' : 'var(--text-primary)',
+                    background: isSelected ? '#4FD1C5' : isToday ? '#E6FFFA' : 'transparent',
+                    color: isSelected ? 'white' : isToday ? '#4FD1C5' : '#2D3748',
                     position:'relative', transition:'all 0.15s',
                   }}>
                   {day}
-                  {hasAppt && !isSelected && <div style={{ position:'absolute', bottom:2, left:'50%', transform:'translateX(-50%)', width:4, height:4, borderRadius:'50%', background:'var(--accent-blue)' }} />}
+                  {hasAppt && !isSelected && <div style={{ position:'absolute', bottom:2, left:'50%', transform:'translateX(-50%)', width:4, height:4, borderRadius:'50%', background:'#4FD1C5' }} />}
                 </button>
               );
             })}
           </div>
 
           {/* Legend */}
-          <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid var(--border-color)', display:'flex', flexDirection:'column', gap:8 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Ringkasan Bulan Ini</div>
+          <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid #E2E8F0', display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:'#A0AEC0', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Ringkasan Bulan Ini</div>
             {[['Total Janji',Object.values(allAppointments).flat().length],['Selesai',Object.values(allAppointments).flat().filter(a=>a.status==='Selesai').length],['Dibatalkan',Object.values(allAppointments).flat().filter(a=>a.status==='Dibatalkan').length]].map(([k,v]) => (
               <div key={k} style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
-                <span style={{ color:'var(--text-secondary)' }}>{k}</span>
-                <span style={{ fontWeight:700, color:'var(--text-primary)' }}>{v}</span>
+                <span style={{ color:'#718096' }}>{k}</span>
+                <span style={{ fontWeight:700, color:'#2D3748' }}>{v}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Appointment List */}
-        <div style={{ background:'white', borderRadius:12, border:'1px solid var(--border-color)', boxShadow:'var(--shadow-sm)', overflow:'hidden' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid var(--border-color)' }}>
+        <div style={{ background:'white', borderRadius:16, boxShadow:'0 2px 12px rgba(0,0,0,0.08)', overflow:'hidden' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid #E2E8F0' }}>
             <div>
-              <h3 style={{ fontSize:14, fontWeight:700, color:'var(--text-primary)' }}>Janji Temu — {selectedLabel}</h3>
-              <p style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{appointments.length} jadwal terdaftar</p>
+              <h3 style={{ fontSize:14, fontWeight:700, color:'#2D3748' }}>Janji Temu — {selectedLabel}</h3>
+              <p style={{ fontSize:12, color:'#A0AEC0', marginTop:2 }}>{appointments.length} jadwal terdaftar</p>
             </div>
-            <button id="jadwal-add-btn" onClick={() => setShowModal(true)} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 16px', borderRadius:8, border:'none', background:'linear-gradient(135deg,var(--accent-blue),#4c6ef5)', color:'white', fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 4px 12px rgba(59,91,219,0.3)' }}>
+            <button id="jadwal-add-btn" onClick={() => setShowModal(true)} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 16px', borderRadius:12, border:'none', background:'#4FD1C5', color:'white', fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 4px 12px rgba(79,209,197,0.3)' }}>
               <Plus size={15}/> Tambah Jadwal
             </button>
           </div>

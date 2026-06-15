@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CalendarDays, BarChart3, 
@@ -36,24 +36,23 @@ const otherNavItems = [
   { path: '/antrian', label: 'Antrian Digital', icon: ListOrdered }
 ];
 
-/* ── Single Nav Item ── */
 function NavItem({ item, isActive, badge, badgeColor, isCollapsed }) {
   const Icon = item.icon;
 
   return (
-    <div className="px-2 w-full" title={isCollapsed ? item.label : undefined}>
+    <div className="px-3 w-full" title={isCollapsed ? item.label : undefined}>
       <Link
         to={item.path}
-        className={`relative flex items-center h-10 rounded-xl px-3 gap-3 text-[13.5px] font-medium transition-all duration-200 ease-out w-full ${
+        className={`relative flex items-center h-11 rounded-lg px-3 gap-3 text-sm font-medium transition-all duration-200 ease-out w-full ${
           isActive
-            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 hover:bg-emerald-500 hover:text-white'
-            : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/80'
+            ? 'bg-[#4FD1C5] text-white shadow-[0_2px_12px_rgba(79,209,197,0.3)] hover:bg-[#4FD1C5] hover:text-white'
+            : 'text-[#2D3748] hover:text-[#4FD1C5] hover:bg-[#F8F9FA]'
         }`}
       >
         <Icon
           size={17}
           strokeWidth={isActive ? 2.2 : 1.8}
-          className={isActive ? 'text-white' : 'text-slate-400'}
+          className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-[#4FD1C5]'}
         />
         {!isCollapsed && (
           <>
@@ -61,7 +60,7 @@ function NavItem({ item, isActive, badge, badgeColor, isCollapsed }) {
               {item.label}
             </span>
             {badge !== undefined && badge > 0 && (
-              <span className={`ml-auto text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badgeColor || 'bg-amber-500'}`}>
+              <span className={`ml-auto text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badgeColor || 'bg-[#4FD1C5]'}`}>
                 {badge}
               </span>
             )}
@@ -141,20 +140,20 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed md:relative top-0 bottom-0 left-0 z-50 md:z-30 flex flex-col h-full bg-white border-r border-slate-100 shadow-[2px_0_12px_0_rgba(0,0,0,0.04)] transition-all duration-300 ease-in-out overflow-hidden ${sidebarWidthClass} ${sidebarMobileClass} md:translate-x-0`}
+        className={`fixed md:relative top-0 bottom-0 left-0 z-50 md:z-30 flex flex-col h-full bg-white shadow-[2px_0_12px_0_rgba(0,0,0,0.05)] transition-all duration-300 ease-in-out overflow-hidden ${sidebarWidthClass} ${sidebarMobileClass} md:translate-x-0`}
       >
         {/* ── Brand ── */}
         <div className="px-4 pt-5 pb-4 shrink-0">
           <Link to="/" className="flex items-center gap-3 rounded-xl h-12 px-2 hover:bg-slate-50 transition-colors duration-150">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500 shadow-md shadow-emerald-500/30">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#4FD1C5] shadow-md shadow-[rgba(79,209,197,0.3)]">
               <PawPrint size={17} className="text-white" strokeWidth={2.2} />
             </div>
             {!isCollapsed && (
               <div className="flex flex-col min-w-0 leading-none gap-0.5">
                 <span className="font-bold text-[15px] text-slate-800 tracking-tight">
-                  PetCare<span className="text-emerald-500">.</span>
+                  PetCare<span className="text-[#4FD1C5]">.</span>
                 </span>
-                <span className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                <span className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-[#A0AEC0]">
                   Management System
                 </span>
               </div>
@@ -167,7 +166,7 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
           {/* Main Group */}
           <div>
             {!isCollapsed && (
-              <div className="px-5 mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+              <div className="px-5 mb-2 mt-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#A0AEC0]">
                 Overview
               </div>
             )}
@@ -187,7 +186,7 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
           {/* CRM Group */}
           <div>
             {!isCollapsed && (
-              <div className="px-5 mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+              <div className="px-5 mb-2 mt-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#A0AEC0]">
                 CRM
               </div>
             )}
@@ -197,10 +196,10 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
                 let badgeColor = undefined;
                 if (item.path === '/tiket') {
                   badge = ticketBadgeCount;
-                  badgeColor = 'bg-red-500';
+                  badgeColor = 'bg-[#F56565]';
                 } else if (item.path === '/sla') {
                   badge = slaBadgeCount;
-                  badgeColor = 'bg-amber-500';
+                  badgeColor = 'bg-[#ED8936]';
                 }
                 return (
                   <NavItem 
@@ -219,7 +218,7 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
           {/* Other Group */}
           <div>
             {!isCollapsed && (
-              <div className="px-5 mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+              <div className="px-5 mb-2 mt-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#A0AEC0]">
                 Lainnya
               </div>
             )}

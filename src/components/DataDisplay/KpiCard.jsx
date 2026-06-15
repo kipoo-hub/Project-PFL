@@ -2,53 +2,67 @@ import React from 'react';
 import Card from '../Layout/Card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
-const KpiCard = ({ title, value, subtitle, icon: Icon, iconBg, iconColor, trend, trendValue, style }) => (
-  <Card style={{ display: 'flex', flexDirection: 'column', gap: 14, ...style }}>
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-      <div>
-        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, marginBottom: 6 }}>
+const KpiCard = ({ title, value, subtitle, icon: Icon, iconBg = '#4FD1C5', iconColor = '#FFFFFF', trend, trendValue, style }) => {
+  const isPositive = trend === 'up';
+  
+  return (
+    <Card style={{ 
+      display: 'flex', 
+      flexDirection: 'row', 
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      background: '#FFFFFF',
+      borderRadius: '16px',
+      boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+      border: 'none',
+      padding: '20px',
+      ...style 
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '12px', color: '#A0AEC0', fontWeight: 'bold', textTransform: 'uppercase', tracking: '0.05em' }}>
           {title}
         </div>
-        <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1 }}>
-          {value}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '30px', fontWeight: 700, color: '#2D3748', lineHeight: 1.1 }}>
+            {value}
+          </span>
+          {trendValue !== undefined && (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 2,
+              padding: '2px 8px',
+              borderRadius: '20px',
+              background: isPositive ? '#C6F6D5' : '#FED7D7',
+              color: isPositive ? '#48BB78' : '#F56565',
+              fontSize: '11px',
+              fontWeight: 700,
+            }}>
+              {trendValue}
+            </span>
+          )}
         </div>
         {subtitle && (
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{subtitle}</div>
+          <div style={{ fontSize: '12px', color: '#A0AEC0', marginTop: 2 }} className="truncate">
+            {subtitle}
+          </div>
         )}
       </div>
       <div style={{
-        width: 44,
-        height: 44,
+        width: 40,
+        height: 40,
         borderRadius: 12,
         background: iconBg,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
+        marginLeft: 12,
       }}>
         <Icon size={20} color={iconColor} />
       </div>
-    </div>
-    {trendValue !== undefined && (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 3,
-          padding: '2px 8px',
-          borderRadius: 20,
-          background: trend === 'up' ? 'var(--accent-teal-light)' : 'var(--accent-red-light)',
-          color: trend === 'up' ? 'var(--accent-teal)' : 'var(--accent-red)',
-          fontSize: 12,
-          fontWeight: 600,
-        }}>
-          {trend === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-          {trendValue}
-        </div>
-        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>vs bulan lalu</span>
-      </div>
-    )}
-  </Card>
-);
+    </Card>
+  );
+};
 
 export default KpiCard;

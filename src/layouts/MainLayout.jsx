@@ -8,7 +8,7 @@ export default function MainLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#F7F8FC]">
       <AppSidebar 
         isOpen={sidebarOpen} 
         setIsOpen={setSidebarOpen} 
@@ -20,7 +20,7 @@ export default function MainLayout() {
           toggleSidebar={() => setSidebarOpen(!sidebarOpen)} 
           toggleMobileSidebar={() => setMobileOpen(!mobileOpen)} 
         />
-        <main className="flex-1 overflow-auto bg-slate-50/50">
+        <main className="flex-1 overflow-auto bg-[#F7F8FC]">
           <Outlet />
         </main>
       </div>

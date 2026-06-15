@@ -64,7 +64,7 @@ const PageHeader = ({ title, subtitle }) => {
             onChange={(e) => setDate(e.target.value)}
             style={{
               padding: '7px 14px',
-              borderRadius: 8,
+              borderRadius: 12,
               border: '1px solid var(--border-color)',
               background: 'var(--bg-card)',
               color: 'var(--text-secondary)',
@@ -85,7 +85,7 @@ const PageHeader = ({ title, subtitle }) => {
             style={{
               appearance: 'none',
               padding: '7px 32px 7px 14px',
-              borderRadius: 8,
+              borderRadius: 12,
               border: '1px solid var(--border-color)',
               background: 'var(--bg-card)',
               color: 'var(--text-secondary)',
@@ -113,22 +113,22 @@ const PageHeader = ({ title, subtitle }) => {
               alignItems: 'center',
               gap: 8,
               padding: '8px 16px',
-              borderRadius: 8,
+              borderRadius: 12,
               border: 'none',
-              background: 'linear-gradient(135deg, var(--accent-blue), #4c6ef5)',
+              background: 'linear-gradient(135deg, #667EEA, #5A67D8)',
               color: 'white',
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.2s',
-              boxShadow: '0 4px 12px rgba(59,91,219,0.3)',
+              boxShadow: '0 4px 12px rgba(102,126,234,0.3)',
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.boxShadow = '0 6px 16px rgba(59,91,219,0.4)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(102,126,234,0.4)';
               e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(59,91,219,0.3)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(102,126,234,0.3)';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >

@@ -1,359 +1,426 @@
-import { useState, useEffect } from 'react';
+import React from 'react';
 import {
-  Bar, BarChart, Line, LineChart, Pie, PieChart, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import {
-  Users, CalendarCheck, DollarSign, AlertTriangle, ArrowUpRight
+  Users, CalendarCheck, DollarSign, AlertTriangle,
+  TrendingUp, TrendingDown, Clock, CheckCircle2,
+  XCircle, ArrowUpRight,
 } from 'lucide-react';
-import { crmState } from '../lib/crmState';
-
 import PageHeader from '../components/PageHeader';
-import KpiCard from '../components/DataDisplay/KpiCard';
-import StatusBadge from '../components/DataDisplay/StatusBadge';
-import { 
-  monthlyAppointments, 
-  revenueData, 
-  speciesData, 
-  recentAppointments 
-} from '../data/dashboard';
+import { monthlyAppointments, revenueData, speciesData, recentAppointments } from '../data/dashboard';
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+const KpiCard = ({ title, value, subtitle, icon: Icon, iconBg, iconColor, trend, trendValue }) => (
+  <div style={{
+    background: 'var(--bg-card)',
+    borderRadius: 'var(--radius-md)',
+    padding: '20px 22px',
+    boxShadow: 'var(--shadow-sm)',
+    border: '1px solid var(--border-color)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+    transition: 'box-shadow 0.2s, transform 0.2s',
+    cursor: 'default',
+  }}
+    onMouseEnter={e => {
+      e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+      e.currentTarget.style.transform = 'translateY(-2px)';
+    }}
+    onMouseLeave={e => {
+      e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+      e.currentTarget.style.transform = 'translateY(0)';
+    }}
+  >
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+      <div>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, marginBottom: 6 }}>
+          {title}
+        </div>
+        <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+          {value}
+        </div>
+        {subtitle && (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{subtitle}</div>
+        )}
+      </div>
+      <div style={{
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        background: iconBg,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <Icon size={20} color={iconColor} />
+      </div>
+    </div>
+    {trendValue !== undefined && (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 3,
+          padding: '2px 8px',
+          borderRadius: 20,
+          background: trend === 'up' ? 'var(--accent-teal-light)' : 'var(--accent-red-light)',
+          color: trend === 'up' ? 'var(--accent-teal)' : 'var(--accent-red)',
+          fontSize: 12,
+          fontWeight: 600,
+        }}>
+          {trend === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+          {trendValue}
+        </div>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>vs bulan lalu</span>
+      </div>
+    )}
+  </div>
+);
+
+const StatusBadge = ({ status }) => {
+  const config = {
+    'Selesai':           { bg: '#e6fcf5', color: '#0ca678', icon: CheckCircle2 },
+    'Sedang Berjalan':   { bg: '#eef2ff', color: '#3b5bdb', icon: Clock },
+    'Menunggu':          { bg: '#fff4e6', color: '#f76707', icon: Clock },
+    'Dibatalkan':        { bg: '#fff5f5', color: '#e03131', icon: XCircle },
+  };
+  const c = config[status] || { bg: '#f3f4f6', color: '#6b7280', icon: Clock };
+  const Icon = c.icon;
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 5,
+      padding: '3px 10px',
+      borderRadius: 20,
+      background: c.bg,
+      color: c.color,
+      fontSize: 11,
+      fontWeight: 600,
+    }}>
+      <Icon size={11} />
+      {status}
+    </span>
+  );
+};
+
+const formatRupiah = (val) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{
+        background: 'white',
+        border: '1px solid var(--border-color)',
+        borderRadius: 8,
+        padding: '10px 14px',
+        boxShadow: 'var(--shadow-md)',
+        fontSize: 13,
+      }}>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
+        {payload.map((p, i) => (
+          <p key={i} style={{ color: p.color }}>
+            {p.name === 'pendapatan' ? formatRupiah(p.value) : `${p.value} kunjungan`}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
-
 const Dashboard = () => {
-  const [crmStats, setCrmStats] = useState({
-    vaccinesExpiring: 0,
-    pendingFollowups: 0,
-    pipelineDistribution: []
-  });
-
-  useEffect(() => {
-    crmState.init();
-    setCrmStats(crmState.getCRMStats());
-
-    const handleStorage = () => {
-      setCrmStats(crmState.getCRMStats());
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
-
   return (
-    <div className="flex-1 flex flex-col p-6 overflow-y-auto bg-slate-50/50 gap-6">
+    <div style={{
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      padding: 24,
+      overflowY: 'auto',
+      background: 'var(--bg-app)',
+    }}>
       <PageHeader
-        title="Dashboard PetCare Clinic"
-        subtitle="Selamat datang kembali, Dr. Taufiq! Berikut ringkasan klinik hari ini."
+        title="Dashboard Veterinario"
+        subtitle="Selamat datang kembali, Dr. Rizal! Berikut ringkasan klinik hari ini."
       />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KpiCard title="Total Pasien" value="1.284" subtitle="Pasien terdaftar" icon={Users} trend="up" trendValue="+12%" />
-        <KpiCard title="Kunjungan Hari Ini" value="18" subtitle="6 tersisa hari ini" icon={CalendarCheck} trend="up" trendValue="+8%" />
-        <KpiCard title="Pendapatan Bulan Ini" value="Rp 31,2 Jt" subtitle="Target: Rp 35 Jt" icon={DollarSign} trend="up" trendValue="+20%" />
-        <KpiCard title="Kasus Kritis" value="3" subtitle="Perlu penanganan segera" icon={AlertTriangle} trend="down" trendValue="-2" />
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 16,
+        marginBottom: 24,
+      }}>
+        <KpiCard
+          title="Total Pasien"
+          value="1.284"
+          subtitle="Pasien terdaftar"
+          icon={Users}
+          iconBg="var(--accent-blue-light)"
+          iconColor="var(--accent-blue)"
+          trend="up"
+          trendValue="+12%"
+        />
+        <KpiCard
+          title="Kunjungan Hari Ini"
+          value="18"
+          subtitle="6 tersisa hari ini"
+          icon={CalendarCheck}
+          iconBg="var(--accent-teal-light)"
+          iconColor="var(--accent-teal)"
+          trend="up"
+          trendValue="+8%"
+        />
+        <KpiCard
+          title="Pendapatan Bulan Ini"
+          value="Rp 31,2 Jt"
+          subtitle="Target: Rp 35 Jt"
+          icon={DollarSign}
+          iconBg="var(--accent-orange-light)"
+          iconColor="var(--accent-orange)"
+          trend="up"
+          trendValue="+20%"
+        />
+        <KpiCard
+          title="Kasus Kritis"
+          value="3"
+          subtitle="Perlu penanganan segera"
+          icon={AlertTriangle}
+          iconBg="var(--accent-red-light)"
+          iconColor="var(--accent-red)"
+          trend="down"
+          trendValue="-2"
+        />
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr 340px',
+        gap: 16,
+        marginBottom: 24,
+      }}>
         {/* Bar Chart: Monthly Appointments */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
-          <div className="pb-2">
-            <h3 className="text-base font-semibold text-slate-800">Kunjungan per Bulan</h3>
-            <p className="text-xs text-slate-500">Tahun 2025</p>
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: 'var(--radius-md)',
+          padding: '20px 22px',
+          boxShadow: 'var(--shadow-sm)',
+          border: '1px solid var(--border-color)',
+        }}>
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+              Kunjungan per Bulan
+            </h3>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+              Tahun 2025
+            </p>
           </div>
-          <div className="flex-1 pb-2">
-            <div className="h-[320px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyAppointments} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={11} dy={10} />
-                  <Tooltip 
-                    cursor={{ fill: 'transparent' }} 
-                    contentStyle={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', fontSize: '11px' }} 
-                  />
-                  <Bar dataKey="jumlah" fill="#3b5bdb" radius={[4, 4, 0, 0]} barSize={32} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Line Chart: Revenue */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
-          <div className="pb-2">
-            <h3 className="text-base font-semibold text-slate-800">Tren Pendapatan</h3>
-            <p className="text-xs text-slate-500">11 bulan terakhir</p>
-          </div>
-          <div className="flex-1 pb-2">
-            <div className="h-[320px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="bulan" tickLine={false} axisLine={false} fontSize={11} dy={10} />
-                  <YAxis 
-                    tickLine={false} 
-                    axisLine={false} 
-                    fontSize={11} 
-                    width={45}
-                    tickFormatter={(v) => `${(v / 1000000).toFixed(0)}Jt`} 
-                  />
-                  <Tooltip 
-                    contentStyle={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', fontSize: '11px' }} 
-                    formatter={(value) => [`Rp ${value.toLocaleString()}`, 'Pendapatan']}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="pendapatan" 
-                    stroke="#0ca678" 
-                    strokeWidth={2.5} 
-                    dot={{ r: 4, fill: "#0ca678", strokeWidth: 2 }} 
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Pie Chart: Species */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
-          <div className="pb-0">
-            <h3 className="text-base font-semibold text-slate-800">Distribusi Spesies</h3>
-            <p className="text-xs text-slate-500">Dari total pasien</p>
-          </div>
-          <div className="flex-1 flex flex-col justify-center pb-2 mt-4">
-            <div className="h-[220px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-                  <Tooltip 
-                    contentStyle={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', fontSize: '11px' }} 
-                  />
-                  <Pie
-                    data={speciesData}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={70}
-                    outerRadius={100}
-                    paddingAngle={5}
-                  >
-                    {speciesData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-8 grid grid-cols-2 gap-y-3 gap-x-2 px-2">
-              {speciesData.map(item => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
-                    <span className="text-xs font-medium text-slate-600">{item.name}</span>
-                  </div>
-                  <span className="text-xs font-semibold text-slate-700">{item.value}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Distribusi Member per Pipeline Stage */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 w-full mb-4">
-        <div className="pb-2">
-          <h3 className="text-sm font-semibold text-gray-700">
-            Distribusi Member per Pipeline Stage
-          </h3>
-          <p className="text-xs text-slate-500">Jumlah pelanggan pada setiap tahap siklus hidup</p>
-        </div>
-        <div className="h-[200px] w-full mt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={crmStats.pipelineDistribution} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
-              <CartesianGrid horizontal={false} strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis dataKey="name" type="category" fontSize={11} tickLine={false} axisLine={false} width={80} />
-              <Tooltip 
-                contentStyle={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '8px', fontSize: '11px' }} 
-              />
-              <Bar dataKey="value" fill="#3b5bdb" radius={[0, 4, 4, 0]} barSize={16}>
-                {crmStats.pipelineDistribution.map((entry, index) => {
-                  const colors = ['#94a3b8', '#3b5bdb', '#0ca678', '#7048e8', '#e03131'];
-                  return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                })}
-              </Bar>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={monthlyAppointments} barSize={20}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={30} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(59,91,219,0.05)' }} />
+              <Bar dataKey="jumlah" fill="#3b5bdb" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
 
-      {/* CRM Widgets Grid */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-
-        {/* Widget 1 */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">CRM Operasional</p>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Vaksin Jatuh Tempo
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-800">
-                  {crmStats.vaccinesExpiring} Hewan
-                </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200 whitespace-nowrap">
-                  7 Hari
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Follow-up Pending
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-800">
-                  {crmStats.pendingFollowups} Pasien
-                </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 whitespace-nowrap">
-                  Pending
-                </span>
-              </div>
-            </div>
+        {/* Line Chart: Revenue */}
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: 'var(--radius-md)',
+          padding: '20px 22px',
+          boxShadow: 'var(--shadow-sm)',
+          border: '1px solid var(--border-color)',
+        }}>
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+              Tren Pendapatan
+            </h3>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+              11 bulan terakhir
+            </p>
           </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={revenueData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+              <XAxis dataKey="bulan" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={{ fontSize: 11, fill: '#9ca3af' }}
+                axisLine={false}
+                tickLine={false}
+                width={50}
+                tickFormatter={v => `${(v / 1000000).toFixed(0)}Jt`}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Line
+                type="monotone"
+                dataKey="pendapatan"
+                stroke="#0ca678"
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: '#0ca678', strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
 
-        {/* Widget 2 */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Campaigns & Leads</p>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Lead Baru Hari Ini
-              </span>
-              <span className="text-sm font-bold text-gray-800">
-                {crmStats.newLeadsToday || 0} Prospek
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Blast Bulan Ini
-              </span>
-              <span className="text-sm font-bold text-gray-800">
-                {crmStats.blastHistoryThisMonth || 0} Kiriman
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Top Segmen
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-800">
-                  {crmStats.topSegmentName || 'Tidak ada'}
-                </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
-                  {crmStats.topSegmentCount || 0} Member
-                </span>
-              </div>
-            </div>
+        {/* Pie Chart: Species */}
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: 'var(--radius-md)',
+          padding: '20px 22px',
+          boxShadow: 'var(--shadow-sm)',
+          border: '1px solid var(--border-color)',
+        }}>
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+              Distribusi Spesies
+            </h3>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+              Dari total pasien
+            </p>
           </div>
-        </div>
-
-        {/* Widget 3 */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Service & Queue</p>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Tiket Baru
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-800">
-                  {crmStats.ticketsNew || 0} Tiket
-                </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
-                  Baru
-                </span>
+          <ResponsiveContainer width="100%" height={140}>
+            <PieChart>
+              <Pie
+                data={speciesData}
+                cx="50%"
+                cy="50%"
+                innerRadius={40}
+                outerRadius={65}
+                paddingAngle={3}
+                dataKey="value"
+              >
+                {speciesData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => `${value}%`} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+            {speciesData.map(item => (
+              <div key={item.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: item.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{item.name}</span>
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{item.value}%</span>
               </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                SLA Compliance
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-800">
-                  {crmStats.slaRate || 100}%
-                </span>
-                <span className={`text-xs px-2 py-0.5 rounded-full border whitespace-nowrap ${
-                  (crmStats.slaRate || 100) >= 90
-                    ? 'bg-green-50 text-green-700 border-green-200'
-                    : 'bg-red-50 text-red-700 border-red-200'
-                }`}>
-                  {(crmStats.slaRate || 100) >= 90 ? 'Tinggi' : 'Rendah'}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Antrian Aktif
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-800">
-                  {crmStats.activeQueue || 'A-010'}
-                </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 whitespace-nowrap">
-                  {crmStats.waitingQueue || 0} Antre
-                </span>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Appointments Table Wrapper */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden w-full">
-        {/* Header flex-row agar berdampingan rapi tanpa memencet teks */}
-        <div className="flex flex-row items-center justify-between p-6 border-b border-slate-100 space-y-0">
-          <div className="space-y-1">
-            <h3 className="text-base font-semibold text-slate-800">
+      {/* Appointments Table */}
+      <div style={{
+        background: 'var(--bg-card)',
+        borderRadius: 'var(--radius-md)',
+        boxShadow: 'var(--shadow-sm)',
+        border: '1px solid var(--border-color)',
+        overflow: 'hidden',
+      }}>
+        {/* Table Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '18px 22px',
+          borderBottom: '1px solid var(--border-color)',
+        }}>
+          <div>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
               Jadwal Kunjungan Hari Ini
             </h3>
-            <p className="text-xs text-slate-500">
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
               {recentAppointments.length} kunjungan terjadwal
             </p>
           </div>
-          <button className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-bold hover:bg-emerald-100 transition-colors cursor-pointer">
-            Lihat Semua <ArrowUpRight size={15} strokeWidth={2.5} />
+          <button
+            id="dashboard-see-all-btn"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              borderRadius: 6,
+              border: 'none',
+              background: 'var(--accent-blue-light)',
+              color: 'var(--accent-blue)',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#dde4ff'}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--accent-blue-light)'}
+          >
+            Lihat Semua
+            <ArrowUpRight size={13} />
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse min-w-[700px]">
+        {/* Table */}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr className="bg-slate-50/50">
+              <tr style={{ background: '#fafafa' }}>
                 {['ID', 'Pemilik', 'Hewan', 'Spesies', 'Jenis Layanan', 'Waktu', 'Status'].map(col => (
-                  <th 
-                    key={col} 
-                    className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100"
-                  >
+                  <th key={col} style={{
+                    padding: '10px 16px',
+                    textAlign: 'left',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid var(--border-color)',
+                    whiteSpace: 'nowrap',
+                  }}>
                     {col}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {recentAppointments.map((apt) => (
-                <tr key={apt.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 text-xs text-slate-400 font-mono">{apt.id}</td>
-                  <td className="px-6 py-4 text-xs font-medium text-slate-800">{apt.pemilik}</td>
-                  <td className="px-6 py-4 text-xs font-bold text-slate-700">{apt.hewan}</td>
-                  <td className="px-6 py-4 text-xs text-slate-500">{apt.spesies}</td>
-                  <td className="px-6 py-4 text-xs text-slate-500">{apt.jenis}</td>
-                  <td className="px-6 py-4 text-xs font-semibold text-slate-800">{apt.waktu} WIB</td>
-                  <td className="px-6 py-4">
+            <tbody>
+              {recentAppointments.map((apt, i) => (
+                <tr
+                  key={apt.id}
+                  style={{
+                    borderBottom: i < recentAppointments.length - 1 ? '1px solid var(--border-color)' : 'none',
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#fafbff'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                    {apt.id}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                    {apt.pemilik}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>
+                    {apt.hewan}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                    {apt.spesies}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                    {apt.jenis}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                    {apt.waktu} WIB
+                  </td>
+                  <td style={{ padding: '12px 16px' }}>
                     <StatusBadge status={apt.status} />
                   </td>
                 </tr>
