@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function GuestNavbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -69,8 +70,15 @@ export default function GuestNavbar() {
           ))}
         </ul>
 
-        {/* CTA Button */}
+        {/* CTA Buttons */}
         <div className="guest-navbar__actions">
+          <button
+            id="navbar-daftar-btn"
+            className="guest-btn guest-btn--outline-green"
+            onClick={() => navigate('/member/register')}
+          >
+            Daftar Gratis
+          </button>
           <button
             id="navbar-cta-btn"
             className="guest-btn guest-btn--primary"
@@ -108,6 +116,12 @@ export default function GuestNavbar() {
             {item.label}
           </button>
         ))}
+        <button
+          className="guest-btn guest-btn--outline-green guest-navbar__mobile-cta"
+          onClick={() => { setMobileOpen(false); navigate('/member/register'); }}
+        >
+          Daftar Gratis
+        </button>
         <button
           className="guest-btn guest-btn--primary guest-navbar__mobile-cta"
           onClick={() => handleScrollTo('kontak')}

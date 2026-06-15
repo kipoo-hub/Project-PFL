@@ -3,6 +3,7 @@ import './guest.css';
 import GuestNavbar from './components/GuestNavbar';
 import HeroSection from './components/HeroSection';
 import ServicesSection from './components/ServicesSection';
+import MembershipSection from './components/MembershipSection';
 import WhyUsSection from './components/WhyUsSection';
 import CtaBanner from './components/CtaBanner';
 import GuestFooter from './components/GuestFooter';
@@ -33,6 +34,7 @@ export default function GuestPage() {
       <main>
         <HeroSection />
         <ServicesSection />
+        <MembershipSection />
         <WhyUsSection />
         <CtaBanner />
       </main>

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { crmState } from '../lib/crmState';
 import PageHeader from '../components/PageHeader';
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
@@ -38,8 +39,23 @@ const ChartTitle = ({ title, subtitle }) => (
 );
 
 const Analitik = () => {
+  const [stats, setStats] = useState({ successRate: 84, avgTime: 4.2 });
+
+  useEffect(() => {
+    crmState.init();
+    const s = crmState.getCRMStats();
+    setStats({ successRate: s.successRate, avgTime: s.avgTime });
+
+    const handleStorage = () => {
+      const updatedStats = crmState.getCRMStats();
+      setStats({ successRate: updatedStats.successRate, avgTime: updatedStats.avgTime });
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   return (
-    <div style={{ flex:1, padding:24, background:'var(--bg-app)' }}>
+    <div style={{ flex:1, padding:24, background:'var(--bg-app)', overflowY:'auto' }}>
       <PageHeader title="Analitik" subtitle="Laporan dan statistik kinerja klinik hewan Anda." />
 
       {/* KPI Row */}
@@ -66,6 +82,69 @@ const Analitik = () => {
             </div>
           );
         })}
+      </div>
+
+      {/* CRM Follow-up Performance Card */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
+        <Card>
+          <ChartTitle title="Performa CRM & Follow-up Kunjungan" subtitle="Statistik keberhasilan dan efisiensi follow-up pasien klinik" />
+          <div style={{ display:'flex', gap:24, alignItems:'center', padding:'10px 0' }}>
+            <div style={{ textAlign:'center', flexShrink:0 }}>
+              <div style={{
+                width: 100,
+                height: 100,
+                borderRadius: '50%',
+                background: `conic-gradient(var(--accent-teal) ${stats.successRate * 3.6}deg, #f1f5f9 0deg)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+              }}>
+                <div style={{ width: 78, height: 78, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                  <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent-teal)' }}>{stats.successRate}%</span>
+                  <span style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600 }}>BERHASIL</span>
+                </div>
+              </div>
+            </div>
+            <div style={{ flex:1 }}>
+              <h4 style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>Tindak Lanjut & Kepuasan Klien</h4>
+              <p style={{ fontSize:12, color:'var(--text-secondary)', lineHeight:1.5 }}>
+                Persentase kesuksesan follow-up diukur dari jumlah pasien yang dihubungi pasca kunjungan (1-3 hari) yang memberikan feedback positif atau konfirmasi jadwal kontrol kembali.
+              </p>
+              <div style={{ marginTop:12, display:'flex', gap:20 }}>
+                <div>
+                  <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600 }}>RATA-RATA WAKTU RESPON</div>
+                  <div style={{ fontSize:16, fontWeight:700, color:'var(--text-primary)' }}>{stats.avgTime} Jam</div>
+                </div>
+                <div>
+                  <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600 }}>TARGET WAKTU</div>
+                  <div style={{ fontSize:16, fontWeight:700, color:'var(--accent-blue)' }}>&lt; 12 Jam</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+        
+        <Card>
+          <ChartTitle title="Efektivitas Saluran Follow-up" subtitle="Media komunikasi paling responsif untuk tindak lanjut klien" />
+          <div style={{ display:'flex', flexDirection:'column', gap:10, marginTop:10 }}>
+            {[
+              { name: 'WhatsApp', pct: 74, color: '#25D366' },
+              { name: 'Telepon Langsung', pct: 18, color: 'var(--accent-blue)' },
+              { name: 'Email Klinik', pct: 8, color: 'var(--accent-orange)' }
+            ].map(ch => (
+              <div key={ch.name}>
+                <div style={{ display:'flex', justifyItems:'center', justifyContent:'space-between', fontSize:11, fontWeight:600, color:'var(--text-secondary)', marginBottom:4 }}>
+                  <span>{ch.name}</span>
+                  <span>{ch.pct}% Respon</span>
+                </div>
+                <div style={{ height:6, background:'#f1f5f9', borderRadius:3, overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${ch.pct}%`, background:ch.color, borderRadius:3 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
       {/* Charts Row 1 */}

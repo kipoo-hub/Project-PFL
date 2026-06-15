@@ -6,19 +6,6 @@ import {
   HeadphonesIcon, Settings, Component,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import {
-  NavigationMenu,
-  NavigationMenuList,
-  NavigationMenuItem,
-  NavigationMenuTrigger,
-  NavigationMenuContent,
-  NavigationMenuLink,
-} from '@/components/ui/navigation-menu';
 
 /* ─── Nav data ─────────────────────────────────────────────── */
 const navItems = [
@@ -57,48 +44,13 @@ const navItems = [
   },
 ];
 
-/* ─── NavLink card inside dropdown ─────────────────────────── */
-function NavLinkCard({ item, isActive }) {
-  const navigate = useNavigate();
-  const Icon = item.icon;
-  return (
-    <NavigationMenuLink
-      onClick={() => navigate(item.path)}
-      className={[
-        'group flex items-start gap-3 rounded-lg p-2.5 cursor-pointer select-none transition-all duration-150',
-        isActive
-          ? 'bg-emerald-50 text-emerald-700'
-          : 'hover:bg-slate-50 text-slate-700',
-      ].join(' ')}
-    >
-      <div className={[
-        'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-150',
-        isActive ? 'bg-emerald-100' : 'bg-slate-100 group-hover:bg-emerald-50',
-      ].join(' ')}>
-        <Icon
-          size={15}
-          strokeWidth={isActive ? 2.2 : 1.8}
-          className={isActive ? 'text-emerald-600' : 'text-slate-500 group-hover:text-emerald-500'}
-        />
-      </div>
-      <div className="flex flex-col gap-0.5 min-w-0">
-        <span className={['text-[13px] font-semibold leading-none', isActive ? 'text-emerald-700' : 'text-slate-800'].join(' ')}>
-          {item.label}
-        </span>
-        <span className="text-[11.5px] text-slate-400 leading-snug mt-0.5">
-          {item.description}
-        </span>
-      </div>
-    </NavigationMenuLink>
-  );
-}
-
 /* ─── Main Header ───────────────────────────────────────────── */
-const Header = () => {
+const Header = ({ toggleSidebar, toggleMobileSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState({ name: 'Dr. Taufiq', role: 'Dokter Hewan', initials: 'DT' });
   const [notifCount] = useState(3);
+  const [activeDropdown, setActiveDropdown] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
@@ -111,19 +63,35 @@ const Header = () => {
       (l) => location.pathname === l.path || location.pathname.startsWith(l.path + '/')
     );
 
+  const handleHamburgerClick = () => {
+    if (window.innerWidth < 768) {
+      toggleMobileSidebar();
+    } else {
+      toggleSidebar();
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b border-slate-100 shadow-[0_1px_8px_0_rgba(0,0,0,0.05)]">
+    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-sm border-b border-slate-100 shadow-[0_1px_8px_0_rgba(0,0,0,0.05)]">
       {/* ── Top bar ─────────────────────────────────────────── */}
       <div className="flex h-13 items-center gap-3 px-4">
 
         {/* Left: Toggle + Divider + Search */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <SidebarTrigger
+          <button
             id="header-sidebar-trigger"
-            className="shrink-0 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors duration-150"
-          />
+            onClick={handleHamburgerClick}
+            className="shrink-0 p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors duration-150 cursor-pointer outline-none"
+            aria-label="Toggle Sidebar"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
 
-          <Separator orientation="vertical" className="h-4 bg-slate-200" />
+          <div className="w-px h-4 bg-slate-200 shrink-0 mx-1" />
 
           {/* Search */}
           <div className="relative max-w-[260px] w-full">
@@ -131,11 +99,11 @@ const Header = () => {
               size={14}
               className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
             />
-            <Input
+            <input
               id="header-search-input"
               type="search"
               placeholder="Cari pasien, jadwal…"
-              className="pl-8 h-8 text-[13px] bg-slate-50 border-slate-200 placeholder:text-slate-400 focus-visible:bg-white focus-visible:border-emerald-300 focus-visible:ring-emerald-100 rounded-lg transition-all duration-150"
+              className="pl-8 pr-3 h-8 w-full text-[13px] bg-slate-50 border border-slate-200 placeholder:text-slate-400 focus:bg-white focus:border-emerald-300 focus:outline-none rounded-lg transition-all duration-150"
             />
           </div>
         </div>
@@ -145,33 +113,27 @@ const Header = () => {
 
           {/* Notification */}
           <div className="relative">
-            <Button
+            <button
               id="header-notification-btn"
-              variant="ghost"
-              size="icon"
               aria-label="Notifikasi"
-              className="size-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg relative"
+              className="size-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg relative flex items-center justify-center cursor-pointer outline-none"
             >
               <Bell size={16} strokeWidth={1.8} />
-            </Button>
-            {notifCount > 0 && (
-              <Badge
-                className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 text-[9px] font-bold bg-red-500 text-white border-2 border-white rounded-full flex items-center justify-center pointer-events-none"
-              >
-                {notifCount}
-              </Badge>
-            )}
+              {notifCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[14px] h-3.5 px-0.5 text-[8.5px] font-bold bg-red-500 text-white rounded-full flex items-center justify-center pointer-events-none">
+                  {notifCount}
+                </span>
+              )}
+            </button>
           </div>
 
-          <Separator orientation="vertical" className="h-4 bg-slate-200" />
+          <div className="w-px h-4 bg-slate-200 shrink-0 mx-1" />
 
           {/* User profile */}
-          <Button
+          <button
             id="header-profile-btn"
-            variant="ghost"
-            size="sm"
             onClick={() => navigate('/profile')}
-            className="flex items-center gap-2 px-2 h-8 hover:bg-slate-100 rounded-lg transition-colors duration-150"
+            className="flex items-center gap-2 px-2 h-8 hover:bg-slate-100 rounded-lg transition-colors duration-150 cursor-pointer outline-none"
           >
             {/* Avatar */}
             <div className="size-7 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-[10px] shrink-0 ring-2 ring-white shadow-sm">
@@ -183,50 +145,81 @@ const Header = () => {
               <span className="text-[10.5px] text-slate-400 leading-none">{user.role}</span>
             </div>
             <ChevronDown size={12} className="text-slate-400 hidden sm:block" />
-          </Button>
+          </button>
 
         </div>
       </div>
 
       {/* ── Navigation bar ──────────────────────────────────── */}
-      <div className="px-3 pb-0 flex items-center border-t border-slate-50">
-        <NavigationMenu viewport={false}>
-          <NavigationMenuList className="gap-0">
-            {navItems.map((group) => {
-              const active = isGroupActive(group.links);
-              return (
-                <NavigationMenuItem key={group.label}>
-                  <NavigationMenuTrigger
-                    className={[
-                      'h-9 px-3 text-[12.5px] font-medium rounded-none border-b-2 transition-all duration-150',
-                      'hover:bg-transparent focus:bg-transparent data-open:bg-transparent',
-                      active
-                        ? 'border-b-emerald-500 text-emerald-700 font-semibold'
-                        : 'border-b-transparent text-slate-500 hover:text-slate-800',
-                    ].join(' ')}
-                  >
-                    {group.label}
-                  </NavigationMenuTrigger>
+      <div className="px-3 pb-0 flex items-center border-t border-slate-100 relative">
+        <div className="flex gap-1">
+          {navItems.map((group) => {
+            const active = isGroupActive(group.links);
+            const isOpen = activeDropdown === group.label;
+            return (
+              <div 
+                key={group.label} 
+                className="relative"
+                onMouseEnter={() => setActiveDropdown(group.label)}
+                onMouseLeave={() => setActiveDropdown(null)}
+              >
+                <button
+                  onClick={() => setActiveDropdown(isOpen ? null : group.label)}
+                  className={[
+                    'h-9 px-3 text-[12.5px] font-medium border-b-2 transition-all duration-150 flex items-center gap-1 cursor-pointer outline-none',
+                    active
+                      ? 'border-b-emerald-500 text-emerald-700 font-semibold'
+                      : 'border-b-transparent text-slate-500 hover:text-slate-800',
+                  ].join(' ')}
+                >
+                  {group.label}
+                  <ChevronDown size={12} className={['transition-transform duration-200', isOpen ? 'rotate-180' : ''].join(' ')} />
+                </button>
 
-                  <NavigationMenuContent className="min-w-[220px] p-1.5">
+                {isOpen && (
+                  <div className="absolute left-0 mt-0 min-w-[220px] p-1.5 bg-white border border-slate-100 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-150">
                     <div className="grid gap-0.5">
                       {group.links.map((link) => (
-                        <NavLinkCard
+                        <button
                           key={link.path}
-                          item={link}
-                          isActive={
-                            location.pathname === link.path ||
-                            location.pathname.startsWith(link.path + '/')
-                          }
-                        />
+                          onClick={() => {
+                            navigate(link.path);
+                            setActiveDropdown(null);
+                          }}
+                          className={[
+                            'group flex items-start gap-3 rounded-lg p-2.5 cursor-pointer text-left w-full transition-all duration-150',
+                            (location.pathname === link.path || location.pathname.startsWith(link.path + '/'))
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'hover:bg-slate-50 text-slate-700',
+                          ].join(' ')}
+                        >
+                          <div className={[
+                            'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-150',
+                            (location.pathname === link.path || location.pathname.startsWith(link.path + '/')) ? 'bg-emerald-100' : 'bg-slate-100 group-hover:bg-emerald-50',
+                          ].join(' ')}>
+                            {React.createElement(link.icon, {
+                              size: 15,
+                              strokeWidth: (location.pathname === link.path || location.pathname.startsWith(link.path + '/')) ? 2.2 : 1.8,
+                              className: (location.pathname === link.path || location.pathname.startsWith(link.path + '/')) ? 'text-emerald-600' : 'text-slate-500 group-hover:text-emerald-500',
+                            })}
+                          </div>
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className={['text-[13px] font-semibold leading-none', (location.pathname === link.path || location.pathname.startsWith(link.path + '/')) ? 'text-emerald-700' : 'text-slate-800'].join(' ')}>
+                              {link.label}
+                            </span>
+                            <span className="text-[11.5px] text-slate-400 leading-snug mt-0.5">
+                              {link.description}
+                            </span>
+                          </div>
+                        </button>
                       ))}
                     </div>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-              );
-            })}
-          </NavigationMenuList>
-        </NavigationMenu>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </header>
   );

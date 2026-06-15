@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 import { Plus, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, X, Check } from 'lucide-react';
 import { DAYS, MONTHS, allAppointments } from '../data/jadwal';
+import { crmState } from '../lib/crmState';
 
 const statusCfg = {
   'Selesai':    { bg:'#e6fcf5', color:'#0ca678', icon: CheckCircle2 },
@@ -58,12 +59,53 @@ const JadwalTemu = () => {
   const [currentMonth, setCurrentMonth] = useState({ year: 2025, month: 4 });
   const [selectedDate, setSelectedDate] = useState('2025-05-11');
   const [showModal, setShowModal] = useState(false);
+  const [dbAppointments, setDbAppointments] = useState({});
+  const [successToast, setSuccessToast] = useState('');
+
+  useEffect(() => {
+    crmState.init();
+    const stored = localStorage.getItem('vet_crm_appointments');
+    if (!stored) {
+      localStorage.setItem('vet_crm_appointments', JSON.stringify(allAppointments));
+      setDbAppointments(allAppointments);
+    } else {
+      setDbAppointments(JSON.parse(stored));
+    }
+  }, []);
+
+  const handleUpdateStatus = (dateStr, apptId, newStatus) => {
+    const updated = { ...dbAppointments };
+    const list = updated[dateStr] || [];
+    
+    const idx = list.findIndex(a => a.id === apptId);
+    if (idx !== -1) {
+      const appt = { ...list[idx], status: newStatus };
+      list[idx] = appt;
+      updated[dateStr] = list;
+      
+      localStorage.setItem('vet_crm_appointments', JSON.stringify(updated));
+      setDbAppointments(updated);
+      
+      if (newStatus === 'Selesai') {
+        crmState.addFollowUpTask(appt);
+        setSuccessToast(`Janji temu selesai! Task follow-up untuk ${appt.hewan} otomatis dibuat.`);
+      } else {
+        setSuccessToast(`Jadwal janji temu berhasil diubah ke: ${newStatus}`);
+      }
+
+      window.dispatchEvent(new Event('storage'));
+
+      setTimeout(() => {
+        setSuccessToast('');
+      }, 3500);
+    }
+  };
 
   const daysInMonth = new Date(currentMonth.year, currentMonth.month + 1, 0).getDate();
   const firstDay = new Date(currentMonth.year, currentMonth.month, 1).getDay();
 
   const fmtDate = (y, m, d) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-  const appointments = allAppointments[selectedDate] || [];
+  const appointments = dbAppointments[selectedDate] || [];
 
   const prevMonth = () => setCurrentMonth(c => c.month === 0 ? {year:c.year-1,month:11} : {year:c.year,month:c.month-1});
   const nextMonth = () => setCurrentMonth(c => c.month === 11 ? {year:c.year+1,month:0} : {year:c.year,month:c.month+1});
@@ -74,7 +116,27 @@ const JadwalTemu = () => {
   })();
 
   return (
-    <div style={{ flex:1, padding:24, background:'var(--bg-app)' }}>
+    <div style={{ flex:1, padding:24, background:'var(--bg-app)', position: 'relative' }}>
+      {successToast && (
+        <div style={{
+          position: 'fixed',
+          top: 24,
+          right: 24,
+          background: '#0ca678',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: 8,
+          boxShadow: 'var(--shadow-lg)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          fontWeight: 600
+        }}>
+          <CheckCircle2 size={18} />
+          {successToast}
+        </div>
+      )}
       <PageHeader title="Jadwal Temu" subtitle="Kelola janji temu dan jadwal kunjungan pasien." />
 
       <div style={{ display:'grid', gridTemplateColumns:'320px 1fr', gap:20 }}>
@@ -142,7 +204,7 @@ const JadwalTemu = () => {
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
                   <tr style={{ background:'#fafafa' }}>
-                    {['Waktu','Hewan','Spesies','Pemilik','Layanan','Dokter','Status'].map(c=>(
+                    {['Waktu','Hewan','Spesies','Pemilik','Layanan','Dokter','Status','Aksi'].map(c=>(
                       <th key={c} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid var(--border-color)', whiteSpace:'nowrap' }}>{c}</th>
                     ))}
                   </tr>
@@ -159,6 +221,26 @@ const JadwalTemu = () => {
                       <td style={{ padding:'12px 16px', fontSize:13, color:'var(--text-secondary)' }}>{a.layanan}</td>
                       <td style={{ padding:'12px 16px', fontSize:13, color:'var(--text-secondary)' }}>{a.dokter}</td>
                       <td style={{ padding:'12px 16px' }}><StatusBadge status={a.status} /></td>
+                      <td style={{ padding:'12px 16px' }}>
+                        {a.status === 'Menunggu' ? (
+                          <div style={{ display:'flex', gap:6 }}>
+                            <button 
+                              onClick={() => handleUpdateStatus(selectedDate, a.id, 'Selesai')}
+                              style={{ padding:'3px 8px', borderRadius:6, border:'none', background:'#e6fcf5', color:'#0ca678', fontSize:11, fontWeight:600, cursor:'pointer' }}
+                            >
+                              Selesai
+                            </button>
+                            <button 
+                              onClick={() => handleUpdateStatus(selectedDate, a.id, 'Dibatalkan')}
+                              style={{ padding:'3px 8px', borderRadius:6, border:'none', background:'#fff5f5', color:'#e03131', fontSize:11, fontWeight:600, cursor:'pointer' }}
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize:11, color:'var(--text-muted)' }}>-</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
