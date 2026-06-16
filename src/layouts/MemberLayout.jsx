@@ -4,17 +4,17 @@ import { useMemberAuth } from '../context/MemberAuthContext';
 import { crmState } from '../lib/crmState';
 import '../pages/member/member-dashboard.css';
 
-const NAV_ITEMS = [
-  { id: 'dashboard', icon: '🏠', label: 'Dashboard', path: '/member/dashboard', badge: null },
-  { id: 'pets', icon: '🐾', label: 'Hewan Peliharaan', path: '/member/dashboard', badge: null },
-  { id: 'appointments', icon: '📅', label: 'Janji Temu', path: '/member/dashboard', badge: 3 },
-  { id: 'vaccines', icon: '💉', label: 'Jadwal Vaksinasi', path: '/member/dashboard', badge: 1 },
-  { id: 'records', icon: '📋', label: 'Rekam Medis', path: '/member/dashboard', badge: null },
-  { id: 'chat', icon: '💬', label: 'Chat Dokter', path: '/member/dashboard', badge: 2 },
-  { id: 'tiket', icon: '🎫', label: 'Tiket Keluhan', path: '/member/tiket', badge: null },
-  { id: 'antrian', icon: '🔢', label: 'Antrian', path: '/member/antrian', badge: null },
-  { id: 'billing', icon: '🧾', label: 'Riwayat Tagihan', path: '/member/dashboard', badge: null },
-  { id: 'profile', icon: '👤', label: 'Profil Saya', path: '/member/dashboard', badge: null },
+const NAV_ITEMS_TEMPLATE = [
+  { id: 'dashboard', icon: '🏠', label: 'Dashboard', path: '/member/dashboard' },
+  { id: 'pets', icon: '🐾', label: 'Hewan Peliharaan', path: '/member/hewan' },
+  { id: 'appointments', icon: '📅', label: 'Janji Temu', path: '/member/janji' },
+  { id: 'vaccines', icon: '💉', label: 'Jadwal Vaksinasi', path: '/member/vaksin' },
+  { id: 'records', icon: '📋', label: 'Rekam Medis', path: '/member/rekam-medis' },
+  { id: 'chat', icon: '💬', label: 'Chat Dokter', path: '/member/chat' },
+  { id: 'tiket', icon: '🎫', label: 'Tiket Keluhan', path: '/member/tiket' },
+  { id: 'antrian', icon: '🔢', label: 'Antrian', path: '/member/antrian' },
+  { id: 'billing', icon: '🧾', label: 'Riwayat Tagihan', path: '/member/tagihan' },
+  { id: 'profile', icon: '👤', label: 'Profil Saya', path: '/member/profil' },
 ];
 
 const BOTTOM_NAV = ['dashboard', 'pets', 'antrian', 'tiket', 'profile'];
@@ -44,17 +44,47 @@ export default function MemberLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [vaccines, setVaccines] = useState([]);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [apptsCount, setApptsCount] = useState(0);
+  const [chatsCount, setChatsCount] = useState(0);
+  const [ticketsCount, setTicketsCount] = useState(0);
+
+  const loadCounts = () => {
+    crmState.init();
+    const vacList = crmState.getVaccines();
+    setVaccines(vacList);
+
+    const email = member?.email || 'demo@email.com';
+    
+    // Appointments
+    const appts = crmState.getMemberAppointments(email);
+    const pendingAppts = appts.filter(a => a.status === 'Menunggu' || a.status === 'Dikonfirmasi').length;
+    setApptsCount(pendingAppts);
+
+    // Chats
+    const mChats = crmState.getMemberChats(email);
+    const totalUnread = mChats.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+    setChatsCount(totalUnread);
+
+    // Tickets
+    const tList = crmState.getTickets();
+    const myEmail = email === 'demo@email.com' ? 'budi@email.com' : email;
+    const activeTickets = tList.filter(t => t.email === myEmail && (t.status === 'Baru' || t.status === 'Dalam Proses')).length;
+    setTicketsCount(activeTickets);
+  };
 
   useEffect(() => {
-    crmState.init();
-    setVaccines(crmState.getVaccines());
+    loadCounts();
 
-    const handleStorage = () => {
-      setVaccines(crmState.getVaccines());
+    const handleUpdate = () => {
+      loadCounts();
     };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('crm_change', handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('crm_change', handleUpdate);
+    };
+  }, [member]);
 
   const memberVaccines = vaccines.filter(v => 
     (member?.email && v.email?.toLowerCase() === member.email.toLowerCase()) ||
@@ -80,6 +110,15 @@ export default function MemberLayout() {
     }
     return location.pathname.startsWith(item.path) && item.id !== 'dashboard' && item.path !== '/member/dashboard';
   };
+
+  const navItems = NAV_ITEMS_TEMPLATE.map(item => {
+    let badge = null;
+    if (item.id === 'vaccines') badge = dueVaccines.length > 0 ? dueVaccines.length : null;
+    if (item.id === 'appointments') badge = apptsCount > 0 ? apptsCount : null;
+    if (item.id === 'chat') badge = chatsCount > 0 ? chatsCount : null;
+    if (item.id === 'tiket') badge = ticketsCount > 0 ? ticketsCount : null;
+    return { ...item, badge };
+  });
 
   return (
     <div className="md-root">
@@ -113,7 +152,7 @@ export default function MemberLayout() {
         {/* Nav items */}
         <nav className="md-sidebar__nav" aria-label="Menu member">
           <div className="md-sidebar__section-label">Menu Utama</div>
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = isItemActive(item);
             return (
               <Link
@@ -237,7 +276,7 @@ export default function MemberLayout() {
                   ))}
                 </div>
               </div>
-              <button className="md-alert-banner__cta" onClick={() => navigate('/member/dashboard')}>
+              <button className="md-alert-banner__cta" onClick={() => navigate('/member/janji')}>
                 Buat Janji Temu
               </button>
             </div>
@@ -251,7 +290,7 @@ export default function MemberLayout() {
       {/* ── BOTTOM NAVIGATION (mobile) ── */}
       <nav className="md-bottom-nav" aria-label="Navigasi mobile">
         <div className="md-bottom-nav__inner">
-          {NAV_ITEMS.filter((i) => BOTTOM_NAV.includes(i.id)).map((item) => {
+          {navItems.filter((i) => BOTTOM_NAV.includes(i.id)).map((item) => {
             const active = isItemActive(item);
             return (
               <Link

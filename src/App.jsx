@@ -44,6 +44,14 @@ const MemberRegister = lazy(() => import('./pages/member/auth/MemberRegister'));
 const MemberDashboard = lazy(() => import('./pages/member/MemberDashboard'));
 const MemberTickets = lazy(() => import('./pages/member/MemberTickets'));
 const MemberQueue = lazy(() => import('./pages/member/MemberQueue'));
+const MemberPets = lazy(() => import('./pages/member/MemberPets'));
+const MemberPetDetail = lazy(() => import('./pages/member/MemberPetDetail'));
+const MemberAppointments = lazy(() => import('./pages/member/MemberAppointments'));
+const MemberVaccines = lazy(() => import('./pages/member/MemberVaccines'));
+const MemberMedicalRecords = lazy(() => import('./pages/member/MemberMedicalRecords'));
+const MemberChat = lazy(() => import('./pages/member/MemberChat'));
+const MemberBills = lazy(() => import('./pages/member/MemberBills'));
+const MemberProfile = lazy(() => import('./pages/member/MemberProfile'));
 
 // Admin CRM Stage 3 pages — lazy loaded
 const Tickets = lazy(() => import('./pages/Tickets'));
@@ -74,6 +82,14 @@ function App() {
               <Route path="/member/dashboard" element={<MemberDashboard />} />
               <Route path="/member/tiket"     element={<MemberTickets />} />
               <Route path="/member/antrian"   element={<MemberQueue />} />
+              <Route path="/member/hewan"          element={<MemberPets />} />
+              <Route path="/member/hewan/:id"      element={<MemberPetDetail />} />
+              <Route path="/member/janji"          element={<MemberAppointments />} />
+              <Route path="/member/vaksin"         element={<MemberVaccines />} />
+              <Route path="/member/rekam-medis"    element={<MemberMedicalRecords />} />
+              <Route path="/member/chat"           element={<MemberChat />} />
+              <Route path="/member/tagihan"        element={<MemberBills />} />
+              <Route path="/member/profil"         element={<MemberProfile />} />
             </Route>
           </Route>
 

@@ -1,14 +1,53 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function GuestNavbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [visible, setVisible] = useState(true);
+  const [activeSection, setActiveSection] = useState('beranda');
   const [mobileOpen, setMobileOpen] = useState(false);
+  
+  const prevScrollPosRef = useRef(0);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => {
+      const currentScrollPos = window.scrollY;
+      const prevScrollPos = prevScrollPosRef.current;
+
+      // Scrolled > 50px
+      setScrolled(currentScrollPos > 50);
+
+      // Scroll direction: visible if scrolling up or at top
+      const isVisible = prevScrollPos > currentScrollPos || currentScrollPos < 10;
+      setVisible(isVisible);
+      prevScrollPosRef.current = currentScrollPos;
+
+      // Active section detection
+      const sections = ['beranda', 'layanan', 'tentang', 'kontak'];
+      
+      const isAtBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 100);
+      if (isAtBottom) {
+        setActiveSection('kontak');
+        return;
+      }
+
+      const scrollPosition = window.scrollY + 120;
+      for (const sectionId of sections) {
+        const el = document.getElementById(sectionId);
+        if (el) {
+          const top = el.offsetTop;
+          const height = el.offsetHeight;
+          if (scrollPosition >= top && scrollPosition < top + height) {
+            setActiveSection(sectionId);
+            break;
+          }
+        }
+      }
+    };
+
     window.addEventListener('scroll', handleScroll);
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -20,7 +59,7 @@ export default function GuestNavbar() {
 
   return (
     <nav
-      className={`guest-navbar ${scrolled ? 'guest-navbar--scrolled' : ''}`}
+      className={`guest-navbar ${scrolled ? 'guest-navbar--scrolled' : ''} ${!visible ? 'guest-navbar--hidden' : ''}`}
       role="navigation"
       aria-label="Main navigation"
     >
@@ -61,7 +100,7 @@ export default function GuestNavbar() {
           ].map((item) => (
             <li key={item.id}>
               <button
-                className="guest-navbar__link"
+                className={`guest-navbar__link ${activeSection === item.id ? 'active' : ''}`}
                 onClick={() => handleScrollTo(item.id)}
               >
                 {item.label}
@@ -110,8 +149,9 @@ export default function GuestNavbar() {
         ].map((item) => (
           <button
             key={item.id}
-            className="guest-navbar__mobile-link"
+            className={`guest-navbar__mobile-link ${activeSection === item.id ? 'active' : ''}`}
             onClick={() => handleScrollTo(item.id)}
+            style={activeSection === item.id ? { color: 'var(--vet-green)', fontWeight: '600' } : {}}
           >
             {item.label}
           </button>

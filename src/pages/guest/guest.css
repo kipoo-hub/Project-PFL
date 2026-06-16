@@ -1816,3 +1816,333 @@
   .membership-cta-row .guest-btn { width: 100%; justify-content: center; }
 }
 
+/* ============================================================
+   INTERACTIVE ENHANCEMENTS OVERRIDES
+   ============================================================ */
+
+/* 1. SCROLL ANIMATION (700ms ease-out, translate-y-8) */
+.scroll-animate {
+  opacity: 0;
+  transform: translateY(2rem) !important;
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out !important;
+}
+
+.scroll-animate.animate-in {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+/* 2. HOVER EFFECT ON SERVICE CARDS */
+.service-card {
+  transition: border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, transform 0.3s ease-in-out !important;
+}
+
+.service-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--vet-shadow-lg) !important;
+  border-color: var(--vet-green-light) !important;
+}
+
+/* Icon scale-110 on hover */
+.service-card:hover .service-card__icon-wrap {
+  transform: scale(1.1) !important;
+}
+
+/* Link underline animation */
+.service-card__link {
+  position: relative;
+  text-decoration: none;
+  transition: color 0.3s ease-in-out !important;
+}
+
+.service-card__link::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  transform: scaleX(0);
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: currentColor;
+  transform-origin: bottom right;
+  transition: transform 0.3s ease-in-out;
+}
+
+.service-card:hover .service-card__link::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
+}
+
+/* 3. MODAL DETAIL LAYANAN */
+.detail-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
+.detail-modal-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.detail-modal-container {
+  background-color: white;
+  border-radius: 1rem;
+  max-width: 32rem;
+  width: 100%;
+  margin-left: 1rem;
+  margin-right: 1rem;
+  padding: 2rem;
+  position: relative;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  transform: scale(0.95);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-in-out;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.detail-modal-overlay.open .detail-modal-container {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.detail-modal-close {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  transition: color 0.2s ease-in-out, transform 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-modal-close:hover {
+  color: #1e293b;
+  transform: scale(1.1);
+}
+
+.detail-modal-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .detail-modal-checklist {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detail-modal-checkitem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--vet-gray-700);
+}
+
+/* 4. NAVBAR STICKY & ACTIVE HIGHLIGHT */
+.guest-navbar {
+  transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.guest-navbar--scrolled {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  box-shadow: var(--vet-shadow-md) !important;
+}
+
+.guest-navbar--hidden {
+  transform: translateY(-100%);
+}
+
+.guest-navbar__link.active {
+  color: var(--vet-green) !important;
+  font-weight: 600 !important;
+  position: relative;
+}
+
+.guest-navbar__link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  background-color: var(--vet-green);
+  border-radius: 2px;
+}
+
+/* 5. FLOATING WHATSAPP BUTTON */
+.whatsapp-floating-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  width: 56px;
+  height: 56px;
+  background-color: #22c55e;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  transition: all 0.3s ease-in-out;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.whatsapp-floating-btn:hover {
+  background-color: #16a34a;
+  transform: scale(1.1);
+}
+
+.whatsapp-floating-btn__tooltip {
+  position: absolute;
+  right: 70px;
+  background-color: #1e293b;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  pointer-events: none;
+}
+
+.whatsapp-floating-btn:hover .whatsapp-floating-btn__tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.whatsapp-floating-btn__dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  background-color: #ef4444;
+  border-radius: 9999px;
+  border: 2px solid white;
+}
+
+.whatsapp-floating-btn__dot-pulse {
+  position: absolute;
+  inset: -2px;
+  background-color: #ef4444;
+  border-radius: 9999px;
+  opacity: 0.75;
+  animation: whatsappPulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes whatsappPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+/* 6. NEW TESTIMONIAL SECTION */
+.testi-new-section {
+  padding: 100px 0;
+  background-color: var(--vet-gray-50);
+}
+
+.testi-new-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 40px;
+}
+
+.testi-new-card {
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: var(--vet-shadow-sm);
+  border: 1px solid var(--vet-gray-100);
+  padding: 1.5rem;
+  transition: all 0.3s ease-in-out;
+}
+
+.testi-new-card:hover {
+  box-shadow: var(--vet-shadow-md);
+  transform: translateY(-4px);
+}
+
+.testi-new-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  background-color: #dcfce7; /* green-100 */
+  color: #16a34a; /* green-600 */
+  font-weight: 700;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.testi-new-stars {
+  color: #fbbf24;
+  display: flex;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.testi-new-quote {
+  color: var(--vet-gray-600);
+  font-style: italic;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.testi-new-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.testi-new-name {
+  font-weight: 600;
+  color: var(--vet-gray-800);
+  font-size: 0.9rem;
+}
+
+.testi-new-role {
+  font-size: 0.75rem;
+  color: var(--vet-gray-500);
+}
+
+@media (max-width: 768px) {
+  .testi-new-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+

@@ -4,6 +4,7 @@ import {
   LayoutDashboard, Users, CalendarDays,
   BarChart3, Megaphone, Briefcase,
   HeadphonesIcon, Settings, Component,
+  Kanban, ClipboardList, UserPlus, Layers, Send, Ticket, Zap, ListOrdered
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -15,6 +16,7 @@ const navItems = [
     links: [
       { label: 'Overview',  description: 'Ringkasan klinik hari ini',      path: '/',        icon: LayoutDashboard },
       { label: 'Analitik',  description: 'Tren & statistik mendalam',       path: '/analitik', icon: BarChart3       },
+      { label: 'Reminder Vaksin', description: 'Pengingat jadwal vaksinasi pasien', path: '/reminder', icon: Bell },
     ],
   },
   {
@@ -22,7 +24,8 @@ const navItems = [
     icon: Users,
     links: [
       { label: 'Daftar Pasien', description: 'Kelola rekam medis pasien',    path: '/pasien',  icon: Users        },
-      { label: 'Jadwal Temu',   description: 'Atur appointment & follow-up', path: '/jadwal',  icon: CalendarDays },
+      { label: 'Jadwal Temu',   description: 'Atur appointment & jadwal',    path: '/jadwal',  icon: CalendarDays },
+      { label: 'Antrian Digital', description: 'Antrean kunjungan klinik',   path: '/antrian', icon: ListOrdered  },
     ],
   },
   {
@@ -32,6 +35,13 @@ const navItems = [
       { label: 'Marketing', description: 'Kampanye & promosi',          path: '/marketing', icon: Megaphone       },
       { label: 'Sales',     description: 'Pipeline & peluang penjualan', path: '/sales',     icon: Briefcase       },
       { label: 'Layanan',   description: 'Support & layanan pelanggan',  path: '/service',   icon: HeadphonesIcon  },
+      { label: 'Pipeline Member', description: 'Kanban board member',    path: '/pipeline',  icon: Kanban          },
+      { label: 'Follow-up Kunjungan', description: 'Checklist kunjungan pasien', path: '/followup', icon: ClipboardList },
+      { label: 'Lead Management', description: 'Kelola leads & calon pasien', path: '/leads',     icon: UserPlus        },
+      { label: 'Segmentasi Member', description: 'Segmentasi target pasar',   path: '/segmentasi', icon: Layers         },
+      { label: 'Pesan Massal',     description: 'Kirim WA & email massal',   path: '/blast',      icon: Send           },
+      { label: 'Tiket Keluhan',    description: 'Tiket keluhan pelanggan',   path: '/tiket',      icon: Ticket         },
+      { label: 'SLA Monitor',      description: 'Monitor response time keluhan', path: '/sla',    icon: Zap            },
     ],
   },
   {
@@ -43,6 +53,7 @@ const navItems = [
     ],
   },
 ];
+
 
 /* ─── Main Header ───────────────────────────────────────────── */
 const Header = ({ toggleSidebar, toggleMobileSidebar }) => {
@@ -177,8 +188,11 @@ const Header = ({ toggleSidebar, toggleMobileSidebar }) => {
                 </button>
 
                 {isOpen && (
-                  <div className="absolute left-0 mt-0 min-w-[220px] p-1.5 bg-white border border-slate-100 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                    <div className="grid gap-0.5">
+                  <div className={[
+                    "absolute left-0 mt-0 p-1.5 bg-white border border-slate-100 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-150",
+                    group.links.length > 4 ? "min-w-[260px] sm:min-w-[460px] w-auto sm:w-[460px]" : "min-w-[220px]"
+                  ].join(' ')}>
+                    <div className={['grid gap-0.5', group.links.length > 4 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'].join(' ')}>
                       {group.links.map((link) => (
                         <button
                           key={link.path}

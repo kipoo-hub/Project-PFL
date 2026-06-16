@@ -5,13 +5,17 @@ const KEYS = {
   FOLLOWUPS: 'vet_crm_followups',
   MEMBERS: 'vet_crm_members',
   GUESTS: 'vet_crm_guests',
-  APPOINTMENTS: 'vet_crm_appointments',
+  APPOINTMENTS: 'vet_crm_appointments_new',
   LEADS: 'vet_crm_leads',
   BLASTS: 'vet_crm_blasts',
   TICKETS: 'vet_crm_tickets',
   QUEUES: 'vet_crm_queues',
   SLA_CHATS: 'vet_crm_sla_chats',
-  SLA_CONFIG: 'vet_crm_sla_config'
+  SLA_CONFIG: 'vet_crm_sla_config',
+  PETS: 'vet_crm_pets_new',
+  MEDICAL_RECORDS: 'vet_crm_medical_records_new',
+  CHATS: 'vet_crm_chats_new',
+  BILLS: 'vet_crm_bills_new'
 };
 
 // Date helpers
@@ -274,9 +278,119 @@ const loadData = (key, fallbackFn) => {
 const saveData = (key, data) => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
+    window.dispatchEvent(new Event('crm_change'));
   } catch (e) {
     console.error('CRM save error', e);
   }
+};
+
+const getEffectiveMemberId = (memberId) => {
+  const stored = localStorage.getItem('vet_member');
+  if (stored) {
+    try {
+      const m = JSON.parse(stored);
+      if (m.email === 'demo@email.com' || m.email === 'budi@email.com') {
+        return 'MB-005';
+      }
+      if (m.email === 'siti@email.com') {
+        return 'MB-003';
+      }
+      if (m.email === 'dewi@email.com') {
+        return 'MB-006';
+      }
+      return m.id;
+    } catch (_) {}
+  }
+  return memberId;
+};
+
+const initPets = () => [
+  { id: 'PET-001', memberId: 'MB-005', nama: 'Buddy', spesies: 'Anjing', ras: 'Golden Retriever', tanggalLahir: '2021-03-15', jenisKelamin: 'Jantan', berat: 28, warna: 'Golden', sterilisasi: true, status: 'Sehat', foto: '🐕' },
+  { id: 'PET-002', memberId: 'MB-003', nama: 'Luna', spesies: 'Kucing', ras: 'Persia', tanggalLahir: '2022-05-20', jenisKelamin: 'Betina', berat: 4.2, warna: 'Abu-abu', sterilisasi: true, status: 'Vaksin Jatuh Tempo', foto: '🐈' },
+  { id: 'PET-003', memberId: 'MB-008', nama: 'Mochi', spesies: 'Kelinci', ras: 'Kelinci Mini', tanggalLahir: '2023-08-10', jenisKelamin: 'Betina', berat: 1.8, warna: 'Putih', sterilisasi: false, status: 'Perlu Perhatian', foto: '🐇' },
+  { id: 'PET-004', memberId: 'MB-005', nama: 'Max', spesies: 'Anjing', ras: 'Golden Retriever', tanggalLahir: '2021-06-10', jenisKelamin: 'Jantan', berat: 32.0, warna: 'Golden', sterilisasi: true, status: 'Sehat', foto: '🐕' },
+  { id: 'PET-005', memberId: 'MB-005', nama: 'Rex', spesies: 'Anjing', ras: 'Labrador', tanggalLahir: '2020-11-05', jenisKelamin: 'Jantan', berat: 28.5, warna: 'Hitam', sterilisasi: true, status: 'Sehat', foto: '🐕' }
+];
+
+const initAppointments = () => {
+  const getRelDate = (offsetDays) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return d.toISOString().split('T')[0];
+  };
+  return [
+    { id: 'APT-001', memberId: 'MB-005', petName: 'Buddy', service: 'Vaksinasi', doctor: 'Dr. Sarah', date: getRelDate(5), time: '09:00', status: 'Dikonfirmasi', notes: 'Vaksinasi tahunan' },
+    { id: 'APT-002', memberId: 'MB-005', petName: 'Max', service: 'Grooming', doctor: 'Dr. Maya', date: getRelDate(10), time: '13:30', status: 'Dikonfirmasi', notes: 'Grooming lengkap' },
+    { id: 'APT-003', memberId: 'MB-005', petName: 'Rex', service: 'Konsultasi Dokter Hewan', doctor: 'Dr. Rizal', date: getRelDate(2), time: '11:00', status: 'Menunggu', notes: 'Nafsu makan agak berkurang' },
+    { id: 'APT-004', memberId: 'MB-005', petName: 'Buddy', service: 'Konsultasi Dokter Hewan', doctor: 'Dr. Sarah', date: getRelDate(-10), time: '10:00', status: 'Selesai', notes: 'Check-up rutin' },
+    { id: 'APT-005', memberId: 'MB-005', petName: 'Rex', service: 'Vaksinasi', doctor: 'Dr. Sarah', date: getRelDate(-20), time: '09:00', status: 'Selesai', notes: 'Vaksin rabies' },
+    { id: 'APT-006', memberId: 'MB-005', petName: 'Max', service: 'Grooming', doctor: 'Dr. Maya', date: getRelDate(-30), time: '14:00', status: 'Selesai', notes: '' },
+    { id: 'APT-007', memberId: 'MB-005', petName: 'Buddy', service: 'Grooming', doctor: 'Dr. Maya', date: getRelDate(-40), time: '09:00', status: 'Selesai', notes: '' },
+    { id: 'APT-008', memberId: 'MB-005', petName: 'Rex', service: 'Operasi / Tindakan Medis', doctor: 'Dr. Rizal', date: getRelDate(-50), time: '10:00', status: 'Selesai', notes: 'Sterilisasi' },
+    { id: 'APT-009', memberId: 'MB-005', petName: 'Buddy', service: 'Rawat Inap / Penitipan', doctor: 'Dr. Sarah', date: getRelDate(-15), time: '10:00', status: 'Dibatalkan', notes: 'Penitipan dibatalkan karena owner batal pergi' }
+  ];
+};
+
+const initMedicalRecords = () => {
+  const getRelDate = (offsetDays) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return d.toISOString().split('T')[0];
+  };
+  return [
+    { id: 'MR-001', memberId: 'MB-005', petName: 'Buddy', date: getRelDate(-10), doctor: 'Dr. Sarah', diagnosis: 'Dermatitis Alergi Ringan', action: 'Pemberian obat salep antihistamin dan mandi obat', treatment: 'Salep Gentamicin tipis 2x sehari, keramas shampoo khusus sulfur', notes: 'Hindari makanan ayam potong selama 2 minggu, ganti ke salmon/domba.' },
+    { id: 'MR-002', memberId: 'MB-005', petName: 'Rex', date: getRelDate(-20), doctor: 'Dr. Sarah', diagnosis: 'Vaksinasi Rabies Tahunan', action: 'Suntik vaksin rabies', treatment: 'Observasi reaksi alergi 24 jam', notes: 'Kondisi fisik sehat, berat badan ideal.' },
+    { id: 'MR-003', memberId: 'MB-005', petName: 'Max', date: getRelDate(-30), doctor: 'Dr. Maya', diagnosis: 'Bulu Kusut & Kuku Panjang', action: 'Grooming lengkap & potong kuku', treatment: 'Mandi antijamur & pemotongan kuku', notes: 'Tidak ada luka kulit. Telinga bersih.' },
+    { id: 'MR-004', memberId: 'MB-005', petName: 'Buddy', date: getRelDate(-45), doctor: 'Dr. Rizal', diagnosis: 'Gastroenteritis Ringan', action: 'Suntik anti-inflamasi & vitamin', treatment: 'Pemberian antibiotik oral dan suplemen pencernaan', notes: 'Puasa makanan padat 12 jam, hanya boleh minum air oralit hewan.' },
+    { id: 'MR-005', memberId: 'MB-005', petName: 'Rex', date: getRelDate(-50), doctor: 'Dr. Rizal', diagnosis: 'Sterilisasi Jantan', action: 'Kastrasi / Orchiectomy', treatment: 'Pemberian obat pereda nyeri & antibiotik oral', notes: 'Gunakan kerah elisabeth selama 7 hari, pastikan jahitan tetap kering.' },
+    { id: 'MR-006', memberId: 'MB-003', petName: 'Luna', date: getRelDate(-15), doctor: 'Dr. Maya', diagnosis: 'Otitis Eksterna (Infeksi Telinga)', action: 'Pembersihan telinga mendalam & obat tetes telinga', treatment: 'Obat tetes telinga Ilium Ear Drops 3 tetes 2x sehari', notes: 'Kontrol kembali dalam 7 hari jika kemerahan belum berkurang.' }
+  ];
+};
+
+const initChats = () => [
+  {
+    id: 'CHAT-001',
+    memberId: 'MB-005',
+    doctorName: 'Dr. Rizal',
+    doctorTitle: 'Spesialis Bedah & Umum',
+    doctorOnline: true,
+    unreadCount: 0,
+    messages: [
+      { sender: 'member', text: 'Halo dok, jahitan pasca operasi sterilisasi Rex terlihat agak kemerahan. Apakah ini normal?', time: 'Kemarin, 14:00', timestamp: Date.now() - 24 * 3600 * 1000 },
+      { sender: 'doctor', text: 'Halo Pak Budi. Sedikit kemerahan pada 1-2 hari pertama adalah normal karena reaksi inflamasi ringan jaringan.', time: 'Kemarin, 14:15', timestamp: Date.now() - (24 * 3600 - 15 * 60) * 1000 },
+      { sender: 'doctor', text: 'Pastikan Rex tidak menjilati area tersebut (pakaikan collar) dan jaga tetap kering ya Pak.', time: 'Kemarin, 14:16', timestamp: Date.now() - (24 * 3600 - 16 * 60) * 1000 }
+    ]
+  },
+  {
+    id: 'CHAT-002',
+    memberId: 'MB-005',
+    doctorName: 'Dr. Maya',
+    doctorTitle: 'Dermatologi & Internis',
+    doctorOnline: false,
+    unreadCount: 2,
+    messages: [
+      { sender: 'member', text: 'Selamat pagi dok, mata Luna sebelah kiri kok berair dan sedikit bengkak ya hari ini?', time: 'Hari ini, 08:30', timestamp: Date.now() - 3 * 3600 * 1000 },
+      { sender: 'doctor', text: 'Selamat pagi Bu Siti. Apakah ada kotoran mata berwarna kehijauan atau Luna sering mengucek matanya?', time: 'Hari ini, 09:00', timestamp: Date.now() - 2.5 * 3600 * 1000 },
+      { sender: 'member', text: 'Iya dok, dia sering menggaruk area matanya dan kotorannya agak kental kekuningan.', time: 'Hari ini, 09:05', timestamp: Date.now() - (2.5 * 3600 - 5 * 60) * 1000 },
+      { sender: 'doctor', text: 'Kemungkinan ada iritasi atau konjungtivitis bakteri ringan. Untuk pertolongan pertama, tolong bersihkan dengan kapas air hangat suam-suam kuku.', time: 'Hari ini, 10:00', timestamp: Date.now() - 1.5 * 3600 * 1000 },
+      { sender: 'doctor', text: 'Sebaiknya bawa Luna ke klinik sore ini agar kami bisa berikan salep mata antibiotik yang sesuai ya Bu.', time: 'Hari ini, 10:02', timestamp: Date.now() - (1.5 * 3600 - 2 * 60) * 1000 }
+    ]
+  }
+];
+
+const initBills = () => {
+  const getRelDate = (offsetDays) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return d.toISOString().split('T')[0];
+  };
+  return [
+    { id: 'INV-001', memberId: 'MB-005', invoiceNo: '#INV-001', date: getRelDate(-10), service: 'Konsultasi & Pengobatan Dermatitis Buddy', amount: 250000, status: 'Lunas', details: [{ item: 'Konsultasi Dokter Spesialis', qty: 1, price: 75000 }, { item: 'Gentamicin Ointment', qty: 1, price: 65000 }, { item: 'Shampoo Sulfur Khusus Kulit', qty: 1, price: 110000 }] },
+    { id: 'INV-002', memberId: 'MB-005', invoiceNo: '#INV-002', date: getRelDate(-20), service: 'Vaksinasi Rabies Rex', amount: 150000, status: 'Lunas', details: [{ item: 'Vaksin Rabies', qty: 1, price: 150000 }] },
+    { id: 'INV-003', memberId: 'MB-005', invoiceNo: '#INV-003', date: getRelDate(-30), service: 'Grooming Lengkap Max', amount: 80000, status: 'Lunas', details: [{ item: 'Grooming Anjing Premium', qty: 1, price: 80000 }] },
+    { id: 'INV-004', memberId: 'MB-005', invoiceNo: '#INV-004', date: getRelDate(-50), service: 'Tindakan Kastrasi / Sterilisasi Rex', amount: 650000, status: 'Lunas', details: [{ item: 'Tindakan Sterilisasi Kastrasi', qty: 1, price: 500000 }, { item: 'Anestesi & Pemantauan Medis', qty: 1, price: 150000 }] },
+    { id: 'INV-005', memberId: 'MB-005', invoiceNo: '#INV-005', date: getRelDate(-2), service: 'Rawat Inap Pemulihan Gastroenteritis Buddy', amount: 450000, status: 'Belum Dibayar', details: [{ item: 'Rawat Inap Inap Khusus Medis (2 Malam)', qty: 2, price: 150000, total: 300000 }, { item: 'Suplemen & Obat Pencernaan Oral', qty: 1, price: 80000 }, { item: 'Makanan Khusus Gastro Basah', qty: 3, price: 23333, total: 70000 }] }
+  ];
 };
 
 export const crmState = {
@@ -292,6 +406,11 @@ export const crmState = {
     loadData(KEYS.QUEUES, initQueues);
     loadData(KEYS.SLA_CHATS, initSLAChats);
     loadData(KEYS.SLA_CONFIG, initSLAConfig);
+    loadData(KEYS.PETS, initPets);
+    loadData(KEYS.APPOINTMENTS, initAppointments);
+    loadData(KEYS.MEDICAL_RECORDS, initMedicalRecords);
+    loadData(KEYS.CHATS, initChats);
+    loadData(KEYS.BILLS, initBills);
 
     // Sync guest registers into pipeline
     const storedMember = localStorage.getItem('vet_member');
@@ -820,5 +939,148 @@ export const crmState = {
       waitingQueue,
       slaViolations
     };
+  },
+
+  // ── Member Portal CRM Helpers ──
+  getMemberPets: (memberId) => {
+    crmState.init();
+    const pets = loadData(KEYS.PETS, initPets);
+    const effId = getEffectiveMemberId(memberId);
+    return pets.filter(p => p.memberId === effId);
+  },
+
+  addPet: (data) => {
+    crmState.init();
+    const pets = loadData(KEYS.PETS, initPets);
+    const newPet = {
+      id: `PET-${Date.now()}`,
+      status: 'Sehat',
+      foto: data.spesies === 'Anjing' ? '🐕' : data.spesies === 'Kucing' ? '🐈' : data.spesies === 'Kelinci' ? '🐇' : data.spesies === 'Burung' ? '🦜' : '🐾',
+      ...data,
+      memberId: getEffectiveMemberId(data.memberId)
+    };
+    pets.push(newPet);
+    saveData(KEYS.PETS, pets);
+    return newPet;
+  },
+
+  updatePet: (id, data) => {
+    crmState.init();
+    const pets = loadData(KEYS.PETS, initPets);
+    const updated = pets.map(p => p.id === id ? { ...p, ...data } : p);
+    saveData(KEYS.PETS, updated);
+    return updated;
+  },
+
+  deletePet: (id) => {
+    crmState.init();
+    const pets = loadData(KEYS.PETS, initPets);
+    const filtered = pets.filter(p => p.id !== id);
+    saveData(KEYS.PETS, filtered);
+    return filtered;
+  },
+
+  getMemberAppointments: (memberId) => {
+    crmState.init();
+    const appts = loadData(KEYS.APPOINTMENTS, initAppointments);
+    const effId = getEffectiveMemberId(memberId);
+    return appts.filter(a => a.memberId === effId);
+  },
+
+  createAppointment: (data) => {
+    crmState.init();
+    const appts = loadData(KEYS.APPOINTMENTS, initAppointments);
+    const newA = {
+      id: `APT-${Date.now()}`,
+      status: 'Menunggu',
+      ...data,
+      memberId: getEffectiveMemberId(data.memberId)
+    };
+    appts.unshift(newA);
+    saveData(KEYS.APPOINTMENTS, appts);
+    return newA;
+  },
+
+  cancelAppointment: (id) => {
+    crmState.init();
+    const appts = loadData(KEYS.APPOINTMENTS, initAppointments);
+    const updated = appts.map(a => a.id === id ? { ...a, status: 'Dibatalkan' } : a);
+    saveData(KEYS.APPOINTMENTS, updated);
+    return updated;
+  },
+
+  getMemberMedicalRecords: (memberId) => {
+    crmState.init();
+    const records = loadData(KEYS.MEDICAL_RECORDS, initMedicalRecords);
+    const effId = getEffectiveMemberId(memberId);
+    return records.filter(r => r.memberId === effId);
+  },
+
+  getMemberChats: (memberId) => {
+    crmState.init();
+    const chats = loadData(KEYS.CHATS, initChats);
+    const effId = getEffectiveMemberId(memberId);
+    return chats.filter(c => c.memberId === effId);
+  },
+
+  sendMessage: (chatId, text, sender = 'member') => {
+    crmState.init();
+    const chats = loadData(KEYS.CHATS, initChats);
+    const updated = chats.map(c => {
+      if (c.id === chatId) {
+        const d = new Date();
+        const timeStr = `Hari ini, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        return {
+          ...c,
+          unreadCount: sender === 'doctor' ? c.unreadCount + 1 : 0,
+          messages: [...c.messages, { sender, text, time: timeStr, timestamp: Date.now() }]
+        };
+      }
+      return c;
+    });
+    saveData(KEYS.CHATS, updated);
+    return updated.find(c => c.id === chatId);
+  },
+
+  getMemberBills: (memberId) => {
+    crmState.init();
+    const bills = loadData(KEYS.BILLS, initBills);
+    const effId = getEffectiveMemberId(memberId);
+    return bills.filter(b => b.memberId === effId);
+  },
+
+  getMemberProfile: (memberId) => {
+    crmState.init();
+    const members = loadData(KEYS.MEMBERS, initMembers);
+    const effId = getEffectiveMemberId(memberId);
+    const found = members.find(m => m.id === effId);
+    if (!found) {
+      const stored = localStorage.getItem('vet_member');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (_) {}
+      }
+    }
+    return found;
+  },
+
+  updateProfile: (id, data) => {
+    crmState.init();
+    const effId = getEffectiveMemberId(id);
+    const members = loadData(KEYS.MEMBERS, initMembers);
+    const updated = members.map(m => m.id === effId ? { ...m, ...data } : m);
+    saveData(KEYS.MEMBERS, updated);
+    
+    const stored = localStorage.getItem('vet_member');
+    if (stored) {
+      try {
+        const m = JSON.parse(stored);
+        if (m.id === id || getEffectiveMemberId(m.id) === effId) {
+          localStorage.setItem('vet_member', JSON.stringify({ ...m, ...data }));
+        }
+      } catch (_) {}
+    }
+    return updated.find(m => m.id === effId);
   }
 };

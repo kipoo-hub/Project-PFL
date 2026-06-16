@@ -28,7 +28,7 @@ export default function Login() {
       };
       localStorage.setItem('user', JSON.stringify(mockUser));
       setLoading(false);
-      navigate('/');
+      window.location.href = '/'; // <--- MEMAKSA FULL REFRESH HALAMAN
     }, 1200);
   };
 

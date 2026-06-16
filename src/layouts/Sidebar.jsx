@@ -80,11 +80,22 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const navigate = useNavigate();
   const isCollapsed = !isOpen;
 
-  const [user, setUser] = useState({
-    name: 'Dr. Muhammad Taufiq',
-    role: 'Veterinario Principal',
-    initials: 'DT',
+  const [user, setUser] = useState(() => {
+    // 1. Ambil data dari localStorage
+    const savedUser = localStorage.getItem('user');
+    
+    // 2. Cek apakah ada data yang tersimpan
+    if (savedUser) {
+      return JSON.parse(savedUser);
+    }
+    // 3. Jika tidak ada (misalnya user belum login), berikan nilai kosong atau default
+    return { 
+      name: 'Guest', 
+      role: 'Pengunjung', 
+      initials: 'G' 
+    };
   });
+  
   const [badgeCount, setBadgeCount] = useState(0);
   const [ticketBadgeCount, setTicketBadgeCount] = useState(0);
   const [slaBadgeCount, setSlaBadgeCount] = useState(0);
@@ -116,6 +127,7 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
       const updatedSla = crmState.getSLAData();
       setSlaBadgeCount(updatedSla.stats.violationsCount);
     };
+    
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
@@ -127,6 +139,15 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
 
   const sidebarWidthClass = isOpen ? 'w-64' : 'w-16';
   const sidebarMobileClass = mobileOpen ? 'translate-x-0' : '-translate-x-full';
+
+  // --- Fungsi Penanganan Logout ---
+  const handleLogout = () => {
+    const isConfirm = window.confirm('Apakah Anda yakin ingin keluar?');
+    if (isConfirm) {
+      localStorage.removeItem('user'); // Hapus data login
+      navigate('/login');              // Pindah ke halaman login
+    }
+  };
 
   return (
     <>
@@ -265,10 +286,10 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
             </button>
           </div>
 
-          {/* Logout */}
+          {/* Logout (Sudah Diperbaiki) */}
           <div className="flex items-center w-full mt-1">
             <button
-              onClick={() => navigate('/login')}
+              onClick={handleLogout}
               className="flex items-center h-9 w-full px-3 gap-3 rounded-xl text-[13px] font-medium text-red-400 hover:bg-red-50 hover:text-red-500 transition-all duration-150 cursor-pointer outline-none"
               title={isCollapsed ? "Keluar" : undefined}
             >

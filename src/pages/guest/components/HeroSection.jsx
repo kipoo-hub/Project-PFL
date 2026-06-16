@@ -1,6 +1,83 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { crmState } from '../../../lib/crmState';
+
+function AnimatedCounter({ target, suffix = '', duration = 1500, isFloat = false }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = parseFloat(target);
+    if (isNaN(end)) {
+      setCount(target);
+      return;
+    }
+    if (end === 0) return;
+
+    let startTime = null;
+
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = timestamp - startTime;
+      const rate = Math.min(progress / duration, 1);
+      
+      const current = isFloat 
+        ? parseFloat((rate * end).toFixed(1)) 
+        : Math.floor(rate * end);
+
+      setCount(current);
+
+      if (rate < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setCount(end);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [target, duration, isFloat]);
+
+  return (
+    <>
+      {count}
+      {suffix}
+    </>
+  );
+}
 
 export default function HeroSection() {
+  const [stats, setStats] = useState({
+    patients: 5000,
+    members: 500
+  });
+
+  useEffect(() => {
+    try {
+      crmState.init();
+      const pipeline = crmState.getPipelineData();
+      const allMembers = [
+        ...(pipeline.BARU || []),
+        ...(pipeline.AKTIF || []),
+        ...(pipeline.SETIA || []),
+        ...(pipeline.TIDAK_AKTIF || [])
+      ];
+      const activeMembersCount = (pipeline.BARU?.length || 0) + (pipeline.AKTIF?.length || 0) + (pipeline.SETIA?.length || 0);
+
+      let totalPets = 0;
+      allMembers.forEach(m => {
+        if (m.pets && Array.isArray(m.pets)) {
+          totalPets += m.pets.length;
+        }
+      });
+
+      setStats({
+        patients: 5000 + totalPets,
+        members: 500 + activeMembersCount
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   const handleScrollTo = (id) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -64,13 +141,22 @@ export default function HeroSection() {
           {/* Stats row */}
           <div className="hero-stats">
             {[
-              { value: '5000+', label: 'Pasien Dilayani' },
-              { value: '8+', label: 'Dokter Spesialis' },
-              { value: '7', label: 'Hari / Minggu' },
-              { value: '99%', label: 'Kepuasan Klien' },
+              { id: 'pasien', target: stats.patients, suffix: '+', label: 'Pasien Dilayani', duration: 2000 },
+              { id: 'dokter', target: 8, suffix: '+', label: 'Dokter Spesialis', duration: 1500 },
+              { id: 'hari', target: 7, suffix: '', label: 'Hari / Minggu', duration: 1000 },
+              { id: 'kepuasan', target: 99, suffix: '%', label: 'Kepuasan Klien', duration: 2000 },
+              { id: 'rating', target: 4.8, suffix: '★', label: 'Rating', duration: 1000, isFloat: true },
+              { id: 'member', target: stats.members, suffix: '+', label: 'Member Aktif', duration: 2000 }
             ].map((stat) => (
               <div key={stat.label} className="hero-stat">
-                <span className="hero-stat__value">{stat.value}</span>
+                <span className="hero-stat__value">
+                  <AnimatedCounter 
+                    target={stat.target} 
+                    suffix={stat.suffix} 
+                    duration={stat.duration} 
+                    isFloat={stat.isFloat} 
+                  />
+                </span>
                 <span className="hero-stat__label">{stat.label}</span>
               </div>
             ))}
