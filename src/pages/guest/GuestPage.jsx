@@ -44,7 +44,7 @@ export default function GuestPage() {
 
       {/* Floating WhatsApp Button */}
       <a 
-        href="https://wa.me/6281234567890" 
+        href="https://wa.me/6282292707434" 
         target="_blank" 
         rel="noopener noreferrer" 
         className="whatsapp-floating-btn" 
