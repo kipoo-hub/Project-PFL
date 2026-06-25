@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../../context/MemberAuthContext';
-import { crmState } from '../../lib/crmState';
+import { pasienService, jadwalService, medicalRecordService, vaccineService } from '../../lib/supabaseService';
 
 export default function MemberPetDetail() {
   const { id } = useParams();
@@ -13,44 +13,44 @@ export default function MemberPetDetail() {
   const [appointments, setAppointments] = useState([]);
   const [records, setRecords] = useState([]);
   const [vaccines, setVaccines] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const loadPetData = () => {
-    crmState.init();
-    const email = member?.email || 'demo@email.com';
-    
-    // Find pet
-    const memberPets = crmState.getMemberPets(email);
-    const foundPet = memberPets.find(p => p.id === id);
-    if (!foundPet) {
-      setPet(null);
-      return;
+  const loadPetData = async () => {
+    try {
+      setLoading(true);
+      const memberUser = JSON.parse(localStorage.getItem('memberUser'));
+      const memberId = memberUser?.id;
+      if (!memberId) { setPet(null); setLoading(false); return; }
+
+      // Find pet
+      const memberPets = await pasienService.getByMemberId(memberId);
+      const foundPet = memberPets.find(p => p.id === id);
+      if (!foundPet) { setPet(null); setLoading(false); return; }
+      setPet(foundPet);
+
+      // Load appointments filtered by pet name
+      const allAppts = await jadwalService.getByMemberId(memberId);
+      const petAppts = allAppts.filter(a => a.petName?.toLowerCase() === foundPet.nama?.toLowerCase());
+      setAppointments(petAppts);
+
+      // Load medical records filtered by pet name
+      const allRecords = await medicalRecordService.getByMemberId(memberId);
+      const petRecords = allRecords.filter(r => r.petName?.toLowerCase() === foundPet.nama?.toLowerCase());
+      setRecords(petRecords);
+
+      // Load vaccines filtered by pet name
+      const allVaccines = await vaccineService.getAll();
+      const petVaccines = allVaccines.filter(v => v.petName?.toLowerCase() === foundPet.nama?.toLowerCase());
+      setVaccines(petVaccines);
+    } catch (err) {
+      console.error('Failed to load pet data:', err);
+    } finally {
+      setLoading(false);
     }
-    setPet(foundPet);
-
-    // Load and filter appointments by pet name
-    const allAppts = crmState.getMemberAppointments(email);
-    const petAppts = allAppts.filter(a => a.petName?.toLowerCase() === foundPet.nama?.toLowerCase());
-    setAppointments(petAppts);
-
-    // Load and filter medical records by pet name
-    const allRecords = crmState.getMemberMedicalRecords(email);
-    const petRecords = allRecords.filter(r => r.petName?.toLowerCase() === foundPet.nama?.toLowerCase());
-    setRecords(petRecords);
-
-    // Load and filter vaccines by pet name
-    const allVaccines = crmState.getVaccines();
-    const petVaccines = allVaccines.filter(v => v.petName?.toLowerCase() === foundPet.nama?.toLowerCase());
-    setVaccines(petVaccines);
   };
 
   useEffect(() => {
     loadPetData();
-
-    const handleUpdate = () => {
-      loadPetData();
-    };
-    window.addEventListener('crm_change', handleUpdate);
-    return () => window.removeEventListener('crm_change', handleUpdate);
   }, [id, member]);
 
   if (!pet) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { crmState } from '../lib/crmState';
+import { pipelineService } from '../lib/supabaseService';
 import { 
   Users, PawPrint, Calendar, ShieldAlert, 
   DollarSign, ArrowRight, MessageSquare, ListFilter,
@@ -30,23 +30,49 @@ export default function Segmentasi() {
   const [selectedCategory, setSelectedCategory] = useState('jenisHewan');
   const [selectedSegment, setSelectedSegment] = useState(null);
   const [memberList, setMemberList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [memberLoading, setMemberLoading] = useState(false);
 
   useEffect(() => {
-    crmState.init();
-    const data = crmState.getSegments();
-    setSegments(data);
-    
-    // Auto-select first segment of Jenis Hewan
-    if (data.jenisHewan && data.jenisHewan.length > 0) {
-      handleSelectSegment('jenisHewan', data.jenisHewan[0]);
-    }
+    const fetchSegments = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await pipelineService.getSegments();
+        setSegments(data);
+
+        // Auto-select first segment of Jenis Hewan
+        if (data.jenisHewan && data.jenisHewan.length > 0) {
+          const firstSeg = data.jenisHewan[0];
+          setSelectedCategory('jenisHewan');
+          setSelectedSegment(firstSeg);
+          const members = await pipelineService.getMembersBySegment('jenisHewan', firstSeg.value);
+          setMemberList(members);
+        }
+      } catch (err) {
+        console.error('Gagal memuat segmentasi:', err);
+        setError('Gagal memuat data segmentasi.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSegments();
   }, []);
 
-  const handleSelectSegment = (catKey, segment) => {
+  const handleSelectSegment = async (catKey, segment) => {
     setSelectedCategory(catKey);
     setSelectedSegment(segment);
-    const members = crmState.getMembersBySegment(catKey, segment.value);
-    setMemberList(members);
+    try {
+      setMemberLoading(true);
+      const members = await pipelineService.getMembersBySegment(catKey, segment.value);
+      setMemberList(members);
+    } catch (err) {
+      console.error('Gagal memuat member segmen:', err);
+      setMemberList([]);
+    } finally {
+      setMemberLoading(false);
+    }
   };
 
   const handleCreateBlast = () => {
@@ -57,6 +83,22 @@ export default function Segmentasi() {
 
   const formatRp = (v) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v);
+
+  if (loading) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Memuat data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ color: 'var(--accent-red)', fontSize: 14 }}>{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ flex: 1, padding: 24, background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto' }}>
@@ -189,7 +231,13 @@ export default function Segmentasi() {
                   </tr>
                 </thead>
                 <tbody>
-                  {memberList.length === 0 ? (
+                  {memberLoading ? (
+                    <tr>
+                      <td colSpan="5" style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <div style={{ fontSize: 13 }}>Memuat data...</div>
+                      </td>
+                    </tr>
+                  ) : memberList.length === 0 ? (
                     <tr>
                       <td colSpan="5" style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
                         <ListFilter size={32} style={{ margin: '0 auto 8px', opacity: 0.3 }} />

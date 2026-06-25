@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { monthlyAppointments, revenueData, speciesData, recentAppointments } from '../data/dashboard';
+import { dashboardService } from '../lib/supabaseService';
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const KpiCard = ({ title, value, subtitle, icon: Icon, iconBg, iconColor, trend, trendValue }) => (
@@ -136,6 +137,43 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 const Dashboard = () => {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await dashboardService.getStats();
+        setStats(data);
+      } catch (err) {
+        console.error('Gagal memuat statistik dashboard:', err);
+        setError('Gagal memuat data dashboard.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Memuat data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ color: 'var(--accent-red)', fontSize: 14 }}>{error}</div>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       flex: 1,
@@ -159,7 +197,7 @@ const Dashboard = () => {
       }}>
         <KpiCard
           title="Total Pasien"
-          value="1.284"
+          value={stats?.totalPasien ?? '-'}
           subtitle="Pasien terdaftar"
           icon={Users}
           iconBg="var(--accent-blue-light)"
@@ -169,8 +207,8 @@ const Dashboard = () => {
         />
         <KpiCard
           title="Kunjungan Hari Ini"
-          value="18"
-          subtitle="6 tersisa hari ini"
+          value={stats?.kunjunganHariIni ?? '-'}
+          subtitle={stats?.sisaHariIni != null ? `${stats.sisaHariIni} tersisa hari ini` : ''}
           icon={CalendarCheck}
           iconBg="var(--accent-teal-light)"
           iconColor="var(--accent-teal)"
@@ -179,8 +217,8 @@ const Dashboard = () => {
         />
         <KpiCard
           title="Pendapatan Bulan Ini"
-          value="Rp 31,2 Jt"
-          subtitle="Target: Rp 35 Jt"
+          value={stats?.pendapatanBulanIni != null ? formatRupiah(stats.pendapatanBulanIni) : '-'}
+          subtitle={stats?.targetPendapatan != null ? `Target: ${formatRupiah(stats.targetPendapatan)}` : ''}
           icon={DollarSign}
           iconBg="var(--accent-orange-light)"
           iconColor="var(--accent-orange)"
@@ -189,7 +227,7 @@ const Dashboard = () => {
         />
         <KpiCard
           title="Kasus Kritis"
-          value="3"
+          value={stats?.kasusKritis ?? '-'}
           subtitle="Perlu penanganan segera"
           icon={AlertTriangle}
           iconBg="var(--accent-red-light)"

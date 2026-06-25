@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { crmState } from '../lib/crmState';
+import React, { useState, useEffect, useRef } from 'react';
+import { queueService } from '../lib/supabaseService';
+import { supabase } from '../lib/supabase';
 import { PawPrint } from 'lucide-react';
 
 export default function QueueDisplay() {
@@ -9,49 +10,50 @@ export default function QueueDisplay() {
   const [blinkActive, setBlinkActive] = useState(false);
   const [lastCalledId, setLastCalledId] = useState(null);
 
+  const lastCalledIdRef = useRef(lastCalledId);
+  lastCalledIdRef.current = lastCalledId;
+
   useEffect(() => {
-    crmState.init();
     loadQueues();
 
     // Clock effect
     const clockInterval = setInterval(() => {
       const d = new Date();
       setTimeStr(d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB');
-      
+
       const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
       const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
       setDateStr(`${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`);
     }, 1000);
 
-    // Sync from local storage
-    const handleStorage = () => {
+    // Supabase real-time subscription
+    const channel = queueService.subscribeToChanges(() => {
       loadQueues();
-    };
-    window.addEventListener('storage', handleStorage);
-
-    // Polling interval fallback (5s)
-    const pollInterval = setInterval(loadQueues, 5000);
+    });
 
     return () => {
       clearInterval(clockInterval);
-      clearInterval(pollInterval);
-      window.removeEventListener('storage', handleStorage);
+      supabase.removeChannel(channel);
     };
   }, []);
 
-  const loadQueues = () => {
-    const list = crmState.getQueue();
-    setQueues(list);
+  const loadQueues = async () => {
+    try {
+      const list = await queueService.getAll();
+      setQueues(list);
 
-    // Blinking trigger: if a queue changes status to 'Dipanggil'
-    const currentlyCalling = list.find(q => q.status === 'Dipanggil');
-    if (currentlyCalling) {
-      if (currentlyCalling.id !== lastCalledId) {
-        setLastCalledId(currentlyCalling.id);
-        triggerBlink();
+      // Blinking trigger: if a queue changes status to 'Dipanggil'
+      const currentlyCalling = list.find(q => q.status === 'Dipanggil');
+      if (currentlyCalling) {
+        if (currentlyCalling.id !== lastCalledIdRef.current) {
+          setLastCalledId(currentlyCalling.id);
+          triggerBlink();
+        }
+      } else {
+        setLastCalledId(null);
       }
-    } else {
-      setLastCalledId(null);
+    } catch (err) {
+      console.error('Gagal memuat antrian:', err);
     }
   };
 

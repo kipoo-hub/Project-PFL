@@ -25,7 +25,7 @@ export function MemberProtectedRoute() {
 export function MemberGuestRoute() {
   const { isLoggedIn } = useMemberAuth();
   const location = useLocation();
-  const from = location.state?.from?.pathname || '/member/dashboard';
+  const from = location.state?.from?.pathname || '/dashboard';
 
   if (isLoggedIn) {
     return <Navigate to={from} replace />;

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useMemberAuth } from '../../context/MemberAuthContext';
-import { crmState } from '../../lib/crmState';
+import { pasienService } from '../../lib/supabaseService';
 
 export default function MemberPets() {
-  const { member } = useMemberAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [pets, setPets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPet, setEditingPet] = useState(null);
 
@@ -22,29 +22,42 @@ export default function MemberPets() {
   const [warna, setWarna] = useState('');
   const [sterilisasi, setSterilisasi] = useState(false);
 
-  const loadPets = () => {
-    crmState.init();
-    const email = member?.email || 'demo@email.com';
-    const list = crmState.getMemberPets(email);
-    setPets(list);
+  const getMember = () => {
+    try {
+      return JSON.parse(localStorage.getItem('memberUser'));
+    } catch {
+      return null;
+    }
+  };
+
+  const loadPets = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const member = getMember();
+      if (!member?.id) {
+        setPets([]);
+        return;
+      }
+      const list = await pasienService.getByMemberId(member.id);
+      setPets(list || []);
+    } catch (err) {
+      setError('Gagal memuat data hewan. Silakan coba lagi.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadPets();
-    
+
     // Check if redirect requested opening the add modal
     if (location.state?.openAddModal) {
       openAddModal();
       // Clear location state so it doesn't reopen on refresh
       window.history.replaceState({}, document.title);
     }
-
-    const handleUpdate = () => {
-      loadPets();
-    };
-    window.addEventListener('crm_change', handleUpdate);
-    return () => window.removeEventListener('crm_change', handleUpdate);
-  }, [member, location.state]);
+  }, [location.state]);
 
   const openAddModal = () => {
     setEditingPet(null);
@@ -73,17 +86,21 @@ export default function MemberPets() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id, e) => {
+  const handleDelete = async (id, e) => {
     e.stopPropagation();
     if (window.confirm('Apakah Anda yakin ingin menghapus hewan ini?')) {
-      crmState.deletePet(id);
-      loadPets();
+      try {
+        await pasienService.delete(id);
+        await loadPets();
+      } catch (err) {
+        alert('Gagal menghapus hewan. Silakan coba lagi.');
+      }
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const email = member?.email || 'demo@email.com';
+    const member = getMember();
     const petData = {
       nama,
       spesies,
@@ -93,17 +110,19 @@ export default function MemberPets() {
       berat: parseFloat(berat) || 0,
       warna,
       sterilisasi,
-      memberId: email // Will resolve to appropriate ID
     };
 
-    if (editingPet) {
-      crmState.updatePet(editingPet.id, petData);
-    } else {
-      crmState.addPet(petData);
+    try {
+      if (editingPet) {
+        await pasienService.update(editingPet.id, petData);
+      } else {
+        await pasienService.add({ ...petData, memberId: member?.id });
+      }
+      setIsModalOpen(false);
+      await loadPets();
+    } catch (err) {
+      alert('Gagal menyimpan data hewan. Silakan coba lagi.');
     }
-
-    setIsModalOpen(false);
-    loadPets();
   };
 
   const getAge = (birthDateStr) => {
@@ -168,99 +187,117 @@ export default function MemberPets() {
         </button>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-16 text-slate-500 text-sm font-medium">
+          Memuat data...
+        </div>
+      )}
+
+      {/* Error State */}
+      {!loading && error && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-4 text-sm font-medium text-center">
+          {error}
+        </div>
+      )}
+
       {/* Grid */}
-      {pets.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center p-12 sm:p-16 text-center min-h-[400px]">
-          <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mb-6 border border-emerald-100">
-            <span className="text-4xl">🐾</span>
-          </div>
-          <h3 className="text-xl font-bold text-slate-800 mb-2">Belum Ada Hewan Peliharaan</h3>
-          <p className="text-slate-500 text-sm max-w-md mb-8 leading-relaxed">
-            Daftarkan hewan kesayangan Anda terlebih dahulu untuk mulai mengelola profil, melihat rekam medis, dan menjadwalkan janji temu.
-          </p>
-          <button 
-            onClick={openAddModal}
-            className="flex items-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold rounded-xl transition border border-emerald-200"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Tambah Sekarang
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {pets.map((pet) => (
-            <div 
-              key={pet.id} 
-              id={`pet-item-${pet.id}`}
-              onClick={() => navigate(`/member/hewan/${pet.id}`)}
-              className="group flex flex-col bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
-            >
-              {/* Pet Card Header Banner */}
-              <div className="h-24 bg-gradient-to-r from-emerald-50 to-sky-50 relative flex items-end px-5 pb-3 border-b border-slate-50">
-                <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-3xl border shadow-sm ${getPastelBgClass(pet.spesies)} translate-y-6 transform group-hover:scale-105 transition-transform duration-200 bg-white`}>
-                  {petEmoji(pet.spesies)}
-                </div>
-                <div className="ml-auto">
-                  <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${getStatusBadgeClass(pet.status)} shadow-sm`}>
-                    {pet.status}
-                  </span>
-                </div>
+      {!loading && !error && (
+        <>
+          {pets.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center p-12 sm:p-16 text-center min-h-[400px]">
+              <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mb-6 border border-emerald-100">
+                <span className="text-4xl">🐾</span>
               </div>
-
-              {/* Pet Card Body */}
-              <div className="pt-8 px-5 pb-5 flex-1 flex flex-col">
-                <h3 className="text-lg font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">{pet.nama}</h3>
-                <div className="text-sm text-slate-400 font-medium mt-0.5">{pet.spesies} · {pet.ras || 'Blasteran'}</div>
-                
-                {/* Details list */}
-                <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-4 text-xs text-slate-500 font-medium border-t border-slate-100 pt-3">
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase tracking-wider mb-0.5">Umur</span>
-                    {getAge(pet.tanggalLahir)}
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase tracking-wider mb-0.5">Berat</span>
-                    {pet.berat ? `${pet.berat} kg` : '-'}
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase tracking-wider mb-0.5">Jenis Kelamin</span>
-                    {pet.jenisKelamin}
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase tracking-wider mb-0.5">Sterilisasi</span>
-                    {pet.sterilisasi ? 'Sudah (Ya)' : 'Belum (Tidak)'}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 mt-6 pt-3 border-t border-slate-50">
-                  <button 
-                    onClick={(e) => openEditModal(pet, e)}
-                    className="flex-1 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 font-semibold rounded-xl text-xs transition active:scale-95"
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button 
-                    onClick={(e) => navigate(`/member/hewan/${pet.id}`)}
-                    className="flex-1 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-xl text-xs transition active:scale-95 text-center"
-                  >
-                    👁️ Lihat Detail
-                  </button>
-                  <button 
-                    onClick={(e) => handleDelete(pet.id, e)}
-                    className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold rounded-xl text-xs transition active:scale-95"
-                    title="Hapus Hewan"
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </div>
+              <h3 className="text-xl font-bold text-slate-800 mb-2">Belum Ada Hewan Peliharaan</h3>
+              <p className="text-slate-500 text-sm max-w-md mb-8 leading-relaxed">
+                Daftarkan hewan kesayangan Anda terlebih dahulu untuk mulai mengelola profil, melihat rekam medis, dan menjadwalkan janji temu.
+              </p>
+              <button 
+                onClick={openAddModal}
+                className="flex items-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold rounded-xl transition border border-emerald-200"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Tambah Sekarang
+              </button>
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {pets.map((pet) => (
+                <div 
+                  key={pet.id} 
+                  id={`pet-item-${pet.id}`}
+                  onClick={() => navigate(`/member/hewan/${pet.id}`)}
+                  className="group flex flex-col bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
+                >
+                  {/* Pet Card Header Banner */}
+                  <div className="h-24 bg-gradient-to-r from-emerald-50 to-sky-50 relative flex items-end px-5 pb-3 border-b border-slate-50">
+                    <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-3xl border shadow-sm ${getPastelBgClass(pet.spesies)} translate-y-6 transform group-hover:scale-105 transition-transform duration-200 bg-white`}>
+                      {petEmoji(pet.spesies)}
+                    </div>
+                    <div className="ml-auto">
+                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${getStatusBadgeClass(pet.status)} shadow-sm`}>
+                        {pet.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Pet Card Body */}
+                  <div className="pt-8 px-5 pb-5 flex-1 flex flex-col">
+                    <h3 className="text-lg font-bold text-slate-800 group-hover:text-emerald-600 transition-colors">{pet.nama}</h3>
+                    <div className="text-sm text-slate-400 font-medium mt-0.5">{pet.spesies} · {pet.ras || 'Blasteran'}</div>
+                    
+                    {/* Details list */}
+                    <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-4 text-xs text-slate-500 font-medium border-t border-slate-100 pt-3">
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase tracking-wider mb-0.5">Umur</span>
+                        {getAge(pet.tanggalLahir)}
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase tracking-wider mb-0.5">Berat</span>
+                        {pet.berat ? `${pet.berat} kg` : '-'}
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase tracking-wider mb-0.5">Jenis Kelamin</span>
+                        {pet.jenisKelamin}
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase tracking-wider mb-0.5">Sterilisasi</span>
+                        {pet.sterilisasi ? 'Sudah (Ya)' : 'Belum (Tidak)'}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 mt-6 pt-3 border-t border-slate-50">
+                      <button 
+                        onClick={(e) => openEditModal(pet, e)}
+                        className="flex-1 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 font-semibold rounded-xl text-xs transition active:scale-95"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); navigate(`/member/hewan/${pet.id}`); }}
+                        className="flex-1 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-xl text-xs transition active:scale-95 text-center"
+                      >
+                        👁️ Lihat Detail
+                      </button>
+                      <button 
+                        onClick={(e) => handleDelete(pet.id, e)}
+                        className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold rounded-xl text-xs transition active:scale-95"
+                        title="Hapus Hewan"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Modal Add/Edit */}

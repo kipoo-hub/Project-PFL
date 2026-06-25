@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Loading from './components/Loading';
 
 // Layouts (tidak di-lazy load karena sebagai pembungkus utama)
@@ -33,10 +33,13 @@ const Leads = lazy(() => import('./pages/Leads'));
 const Segmentasi = lazy(() => import('./pages/Segmentasi'));
 const Blast = lazy(() => import('./pages/Blast'));
 
-// Auth pages — lazy loaded (clinic staff)
-const Login = lazy(() => import('./pages/auth/Login'));
-const Register = lazy(() => import('./pages/auth/Register'));
-const Forgot = lazy(() => import('./pages/auth/Forgot'));
+// Auth pages — lazy loaded
+const GuestLogin = lazy(() => import('./pages/auth/guest/Login'));
+const GuestRegister = lazy(() => import('./pages/auth/guest/Register'));
+const GuestForgot = lazy(() => import('./pages/auth/guest/Forgot'));
+const AdminLogin = lazy(() => import('./pages/auth/admin/Login'));
+const AdminRegister = lazy(() => import('./pages/auth/admin/Register'));
+const MembersManagement = lazy(() => import('./pages/admin/MembersManagement'));
 
 // Member pages — lazy loaded
 const MemberLogin    = lazy(() => import('./pages/member/auth/MemberLogin'));
@@ -79,7 +82,7 @@ function App() {
           {/* ── Member protected routes ─────────────────────── */}
           <Route element={<MemberProtectedRoute />}>
             <Route element={<MemberLayout />}>
-              <Route path="/member/dashboard" element={<MemberDashboard />} />
+              <Route path="/dashboard" element={<MemberDashboard />} />
               <Route path="/member/tiket"     element={<MemberTickets />} />
               <Route path="/member/antrian"   element={<MemberQueue />} />
               <Route path="/member/hewan"          element={<MemberPets />} />
@@ -95,7 +98,8 @@ function App() {
 
           {/* ── Dashboard routes (MainLayout) ─────────────────── */}
           <Route element={<MainLayout />}>
-            <Route path="/"           element={<Dashboard />} />
+            <Route path="/"           element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/dashboard" element={<Dashboard />} />
             <Route path="/pasien"     element={<Pasien />} />
             <Route path="/jadwal"     element={<JadwalTemu />} />
             <Route path="/analitik"   element={<Analitik />} />
@@ -103,6 +107,7 @@ function App() {
             <Route path="/components" element={<Components />} />
             <Route path="/profile"    element={<Profile />} />
             {/* CRM Routes */}
+            <Route path="/admin/members" element={<MembersManagement />} />
             <Route path="/marketing"  element={<Marketing />} />
             <Route path="/sales"      element={<Sales />} />
             <Route path="/service"    element={<Service />} />
@@ -118,11 +123,13 @@ function App() {
             <Route path="*"           element={<NotFound />} />
           </Route>
 
-          {/* ── Clinic staff auth routes ────────────────────── */}
+          {/* ── Guest & Admin auth routes ────────────────────── */}
           <Route element={<AuthLayout />}>
-            <Route path="/login"    element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot"   element={<Forgot />} />
+            <Route path="/guest/login"    element={<GuestLogin />} />
+            <Route path="/guest/register" element={<GuestRegister />} />
+            <Route path="/guest/forgot"   element={<GuestForgot />} />
+            <Route path="/admin/login"    element={<AdminLogin />} />
+            <Route path="/admin/register" element={<AdminRegister />} />
           </Route>
         </Routes>
       </Suspense>

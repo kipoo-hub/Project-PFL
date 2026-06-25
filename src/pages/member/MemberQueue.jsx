@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useMemberAuth } from '../../context/MemberAuthContext';
-import { crmState } from '../../lib/crmState';
+import { queueService, pasienService } from '../../lib/supabaseService';
 
 export default function MemberQueue() {
-  const { member } = useMemberAuth();
+  const member = (() => {
+    try { return JSON.parse(localStorage.getItem('memberUser')); } catch { return null; }
+  })();
   const [queueList, setQueueList] = useState([]);
-  const [myQueue, setMyQueue] = useState(null);
   const [pets, setPets] = useState([]);
+  const [myQueue, setMyQueue] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -16,66 +18,69 @@ export default function MemberQueue() {
     appointmentTime: '09:00 WIB'
   });
 
+  const loadPets = async () => {
+    if (!member?.id) return;
+    try {
+      const list = await pasienService.getByMemberId(member.id);
+      setPets(list || []);
+      if (list && list.length > 0) {
+        setFormData(prev => ({ ...prev, petName: list[0].nama }));
+      }
+    } catch (err) {
+      console.error('Failed to load member pets for queue form:', err);
+    }
+  };
+
   useEffect(() => {
-    crmState.init();
     loadQueue();
+    loadPets();
 
     // Auto refresh queue position every 10 seconds
     const interval = setInterval(loadQueue, 10000);
-    
-    const handleCrmChange = () => {
-      loadQueue();
-    };
-    window.addEventListener('crm_change', handleCrmChange);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('crm_change', handleCrmChange);
     };
-  }, [member]);
+  }, []);
 
-  const loadQueue = () => {
-    const list = crmState.getQueue();
-    setQueueList(list);
+  const loadQueue = async () => {
+    setLoading(true);
+    try {
+      const list = await queueService.getAll();
+      setQueueList(list || []);
 
-    const email = member?.email || 'demo@email.com';
-    const memberPets = crmState.getMemberPets(email);
-    setPets(memberPets);
-
-    // Set default pet if empty
-    if (memberPets.length > 0 && !formData.petName) {
-      setFormData(prev => ({ ...prev, petName: memberPets[0].nama }));
+      // Find if current member has an active queue
+      const active = (list || []).find(q =>
+        q.email?.toLowerCase() === member?.email?.toLowerCase() &&
+        ['Menunggu', 'Dipanggil', 'Dilayani'].includes(q.status)
+      );
+      setMyQueue(active || null);
+    } finally {
+      setLoading(false);
     }
-
-    // Find if current member has an active queue today
-    const active = list.find(q => 
-      (q.ownerName?.toLowerCase() === member?.name?.toLowerCase() || 
-       (member?.email === 'demo@email.com' && q.ownerName === 'Budi Santoso')) &&
-      ['Menunggu', 'Dipanggil', 'Dilayani'].includes(q.status)
-    );
-    setMyQueue(active || null);
   };
 
-  const handleTakeQueue = (e) => {
+  const handleTakeQueue = async (e) => {
     e.preventDefault();
-    const petToUse = formData.petName || (pets.length > 0 ? pets[0].nama : 'Buddy');
-    
-    crmState.addQueue({
-      ownerName: member?.name || 'Budi Santoso',
+    const petToUse = formData.petName || 'Buddy';
+
+    await queueService.add({
+      ownerName: member?.name || 'Member',
+      email: member?.email || '',
       petName: petToUse,
       service: formData.service,
       type: formData.type,
       appointmentTime: formData.type === 'Jadwalkan' ? formData.appointmentTime : null
     });
 
-    loadQueue();
+    await loadQueue();
   };
 
-  const handleCancelQueue = () => {
+  const handleCancelQueue = async () => {
     if (!myQueue) return;
     if (window.confirm('Apakah Anda yakin ingin membatalkan nomor antrian Anda?')) {
-      crmState.updateQueueStatus(myQueue.id, 'Batal');
-      loadQueue();
+      await queueService.updateStatus(myQueue.id, 'Batal');
+      await loadQueue();
     }
   };
 
@@ -89,6 +94,10 @@ export default function MemberQueue() {
   };
 
   const currentServing = queueList.find(q => q.status === 'Dilayani')?.queueNumber || 'Belum ada';
+
+  if (loading) {
+    return <div className="p-10 text-center text-slate-400">Memuat data...</div>;
+  }
 
   return (
     <div className="pb-10 flex flex-col gap-6">

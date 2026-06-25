@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
-import { crmState } from '../lib/crmState';
+import { vaccineService } from '../lib/supabaseService';
 import { 
   Bell, Clock, CheckCircle2, MessageSquare, 
   Send, ShieldAlert, Calendar, Search, AlertCircle
@@ -32,29 +32,39 @@ export default function Reminder() {
   const [search, setSearch] = useState('');
   const [sendingId, setSendingId] = useState(null);
   const [successToast, setSuccessToast] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    crmState.init();
-    setVaccines(crmState.getVaccines());
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = await vaccineService.getAll();
+        setVaccines(data);
+      } catch (err) {
+        setError('Gagal memuat data vaksin.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
-  const handleSendReminder = (item) => {
+  const handleSendReminder = async (item) => {
     setSendingId(item.id);
-    // Simulate sending network request (500ms)
-    setTimeout(() => {
-      const updated = crmState.sendVaccineReminder(item.id);
+    try {
+      await vaccineService.sendReminder(item.id);
+      const updated = await vaccineService.getAll();
       setVaccines(updated);
-      setSendingId(null);
       setSuccessToast(`Reminder Vaksin berhasil dikirim ke WhatsApp/Email ${item.ownerName}!`);
-      
-      // Dispatch storage event to sync other tabs/components
-      window.dispatchEvent(new Event('storage'));
-
-      // Auto dismiss toast
       setTimeout(() => {
         setSuccessToast('');
       }, 4000);
-    }, 800);
+    } catch (err) {
+      setError('Gagal mengirim reminder.');
+    } finally {
+      setSendingId(null);
+    }
   };
 
   const getUrgencyColor = (days) => {
@@ -78,6 +88,9 @@ export default function Reminder() {
 
   const totalBelum = vaccines.filter(v => v.status === 'Belum Diingatkan').length;
   const totalSudah = vaccines.filter(v => v.status === 'Sudah Diingatkan').length;
+
+  if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--text-muted)' }}>Memuat data...</div>;
+  if (error) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--accent-red)' }}>{error}</div>;
 
   return (
     <div style={{ flex: 1, padding: 24, background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto' }}>

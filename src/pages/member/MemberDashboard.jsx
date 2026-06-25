@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../../context/MemberAuthContext';
-import { crmState } from '../../lib/crmState';
+import {
+  pasienService,
+  jadwalService,
+  vaccineService,
+  ticketService,
+} from '../../lib/supabaseService';
 import './member-dashboard.css';
 
 // Helpers
@@ -53,68 +58,62 @@ const formatCurrentDate = () => {
 };
 
 export default function MemberDashboard() {
-  const { member } = useMemberAuth();
+  const { member: authMember } = useMemberAuth();
   const navigate = useNavigate();
   const [pets, setPets] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [activities, setActivities] = useState([]);
   const [vaccines, setVaccines] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const loadDashboardData = () => {
-    crmState.init();
-    const email = member?.email || 'demo@email.com';
-    
-    // Load pets
-    const memberPets = crmState.getMemberPets(email);
-    setPets(memberPets);
-
-    // Load appointments
-    const allAppts = crmState.getMemberAppointments(email);
-    const upcoming = allAppts.filter(a => a.status === 'Menunggu' || a.status === 'Dikonfirmasi');
-    setAppointments(upcoming);
-
-    // Load activities (medical records)
-    const records = crmState.getMemberMedicalRecords(email);
-    const mappedActivities = records.slice(0, 5).map((r, index) => {
-      let icon = '🩺';
-      if (r.diagnosis.toLowerCase().includes('vaksin')) icon = '💉';
-      if (r.diagnosis.toLowerCase().includes('grooming')) icon = '✂️';
-      if (r.diagnosis.toLowerCase().includes('steril')) icon = '✂️';
-      return {
-        id: r.id || index,
-        icon,
-        title: `${r.diagnosis} — ${r.petName}`,
-        meta: `${r.date} · Tindakan: ${r.action}`,
-        time: getDaysAgoString(r.date)
-      };
-    });
-    setActivities(mappedActivities);
-
-    // Load vaccines
-    setVaccines(crmState.getVaccines());
-  };
+  // Read member from localStorage (with fallback to auth context)
+  const member = (() => {
+    try {
+      const stored = localStorage.getItem('memberUser');
+      return stored ? JSON.parse(stored) : authMember;
+    } catch {
+      return authMember;
+    }
+  })();
 
   useEffect(() => {
-    loadDashboardData();
+    const fetchData = async () => {
+      if (!member?.id) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const [memberPets, allAppts, memberVaccines] = await Promise.all([
+          pasienService.getByMemberId(member.id),
+          jadwalService.getByMemberId(member.id),
+          vaccineService.getByEmail(member.email),
+        ]);
 
-    const handleUpdate = () => {
-      loadDashboardData();
-    };
-    window.addEventListener('storage', handleUpdate);
-    window.addEventListener('crm_change', handleUpdate);
-    return () => {
-      window.removeEventListener('storage', handleUpdate);
-      window.removeEventListener('crm_change', handleUpdate);
-    };
-  }, [member]);
+        setPets(memberPets || []);
 
-  const memberVaccines = vaccines.filter(v => 
-    (member?.email && v.email?.toLowerCase() === member.email.toLowerCase()) ||
-    (member?.name && v.ownerName?.toLowerCase() === member.name.toLowerCase()) ||
-    (member?.email === 'demo@email.com' && v.email === 'budi@email.com')
+        const upcoming = (allAppts || []).filter(
+          (a) => a.status === 'Menunggu' || a.status === 'Dikonfirmasi'
+        );
+        setAppointments(upcoming);
+
+        setVaccines(memberVaccines || []);
+
+        // Activities derived from appointments/records (no separate medical records endpoint needed here)
+        setActivities([]);
+      } catch (err) {
+        console.error('Dashboard fetch error:', err);
+        setError('Gagal memuat data dashboard.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [member?.id]);
+
+  const dueVaccines = vaccines.filter(
+    (v) => v.daysRemaining <= 7 && v.status === 'Belum Diingatkan'
   );
-
-  const dueVaccines = memberVaccines.filter(v => v.daysRemaining <= 7 && v.status === 'Belum Diingatkan');
 
   const firstName = member?.name?.split(' ')[0] || 'Member';
   const petEmoji = { 'Anjing': '🐕', 'Kucing': '🐈', 'Kelinci': '🐇', 'Burung': '🦜' };
@@ -123,6 +122,14 @@ export default function MemberDashboard() {
   // Summary logic
   const petNamesList = pets.map(p => p.nama).join(', ');
   const nextAppt = appointments[0];
+
+  if (loading) {
+    return <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Memuat data...</div>;
+  }
+
+  if (error) {
+    return <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>{error}</div>;
+  }
 
   return (
     <div>

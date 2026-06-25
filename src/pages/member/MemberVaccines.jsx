@@ -1,47 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../../context/MemberAuthContext';
-import { crmState } from '../../lib/crmState';
+import { vaccineService } from '../../lib/supabaseService';
 
 export default function MemberVaccines() {
-  const { member } = useMemberAuth();
+  const { member: authMember } = useMemberAuth();
   const navigate = useNavigate();
+
+  const member = (() => {
+    try { return JSON.parse(localStorage.getItem('memberUser')); } catch { return authMember; }
+  })() || authMember;
 
   const [vaccines, setVaccines] = useState([]);
   const [pets, setPets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filterPet, setFilterPet] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
 
-  const loadVaccines = () => {
-    crmState.init();
-    const email = member?.email || 'demo@email.com';
-    
-    // Get member pets
-    const memberPets = crmState.getMemberPets(email);
-    setPets(memberPets);
+  const loadVaccines = async () => {
+    if (!member?.email) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const memberVaccines = await vaccineService.getByEmail(member.email);
+      setVaccines(memberVaccines || []);
 
-    // Get vaccines
-    const allVaccines = crmState.getVaccines();
-    
-    // Filter vaccines belonging to this member's pets
-    const memberVaccines = allVaccines.filter(v => 
-      (member?.email && v.email?.toLowerCase() === member.email.toLowerCase()) ||
-      (member?.name && v.ownerName?.toLowerCase() === member.name.toLowerCase()) ||
-      (member?.email === 'demo@email.com' && v.email === 'budi@email.com')
-    );
-    
-    setVaccines(memberVaccines);
+      // Derive unique pets from vaccine data
+      const uniquePets = [];
+      const seen = new Set();
+      (memberVaccines || []).forEach(v => {
+        if (v.petName && !seen.has(v.petName)) {
+          seen.add(v.petName);
+          uniquePets.push({ id: v.petName, nama: v.petName, spesies: v.species || '' });
+        }
+      });
+      setPets(uniquePets);
+    } catch (err) {
+      setError('Gagal memuat data vaksinasi.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadVaccines();
-
-    const handleUpdate = () => {
-      loadVaccines();
-    };
-    window.addEventListener('crm_change', handleUpdate);
-    return () => window.removeEventListener('crm_change', handleUpdate);
-  }, [member]);
+  }, [member?.email]);
 
   // Statistics calculation
   const totalVaccinesCount = vaccines.length;
@@ -79,6 +83,9 @@ export default function MemberVaccines() {
     }
     return { text: 'Terjadwal 🗓️', className: 'bg-blue-100 text-blue-800 border-blue-200' };
   };
+
+  if (loading) return <div className="p-8 text-center text-slate-400 text-sm">Memuat data...</div>;
+  if (error) return <div className="p-8 text-center text-rose-500 text-sm">{error}</div>;
 
   return (
     <div className="pb-10">

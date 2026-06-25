@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
-import { crmState } from '../lib/crmState';
+import { pipelineService } from '../lib/supabaseService';
 import { 
   Users, UserPlus, CheckCircle2, Star, 
   AlertTriangle, Send, Eye, ShieldAlert, ArrowRightLeft,
@@ -53,28 +53,45 @@ export default function PipelineMember() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [successToast, setSuccessToast] = useState('');
   const [activeTab, setActiveTab] = useState('board'); // 'board' or 'chart'
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    crmState.init();
-    setPipeline(crmState.getPipelineData());
+    fetchPipeline();
   }, []);
 
-  const handleMoveStage = (member, newStage) => {
+  const fetchPipeline = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await pipelineService.getAll();
+      setPipeline(data);
+    } catch (err) {
+      setError('Gagal memuat data pipeline. Silakan coba lagi.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMoveStage = async (member, newStage) => {
     // Stage in state is capitalized, mapping 'Tidak Aktif' or 'TIDAK_AKTIF'
     const dbStage = newStage === 'TIDAK_AKTIF' ? 'TIDAK AKTIF' : newStage;
-    const updated = crmState.moveMemberStage(member.id, dbStage);
-    setPipeline(updated);
-    
-    // Update selected member view
-    setSelectedMember({ ...member, stage: dbStage });
-    setSuccessToast(`${member.name} berhasil dipindahkan ke tahap ${stageCfg[newStage].label}!`);
-    
-    // Notify other components/tabs
-    window.dispatchEvent(new Event('storage'));
+    try {
+      const updated = await pipelineService.moveStage(member.id, dbStage);
+      setPipeline(updated);
 
-    setTimeout(() => {
-      setSuccessToast('');
-    }, 3000);
+      // Update selected member view
+      setSelectedMember({ ...member, stage: dbStage });
+      setSuccessToast(`${member.name} berhasil dipindahkan ke tahap ${stageCfg[newStage].label}!`);
+
+      setTimeout(() => {
+        setSuccessToast('');
+      }, 3000);
+    } catch (err) {
+      alert('Gagal memindahkan tahap member. Silakan coba lagi.');
+      console.error(err);
+    }
   };
 
   const handleSendReminder = (member) => {
@@ -83,6 +100,9 @@ export default function PipelineMember() {
       setSuccessToast('');
     }, 3000);
   };
+
+  if (loading) return <div style={{ padding: 20 }}>Memuat data...</div>;
+  if (error) return <div style={{ padding: 20, color: 'red' }}>{error}</div>;
 
   return (
     <div style={{ flex: 1, padding: 24, background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto' }}>

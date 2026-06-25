@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
-import { crmState } from '../lib/crmState';
+import { ticketService } from '../lib/supabaseService';
 import { 
   Ticket, AlertCircle, Clock, CheckCircle, ShieldAlert,
   Search, Eye, Send, ArrowRight
@@ -19,6 +19,8 @@ const cardStyle = {
 
 export default function Tickets() {
   const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null);
   
   // Filters State
@@ -30,44 +32,48 @@ export default function Tickets() {
   const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
-    crmState.init();
     loadTickets();
-    
-    const handleStorage = () => {
-      loadTickets();
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  const loadTickets = () => {
-    const list = crmState.getTickets();
-    setTickets(list);
+  const loadTickets = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const list = await ticketService.getAll();
+      setTickets(list);
+    } catch (err) {
+      setError('Gagal memuat data tiket.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdateStatus = (id, newStatus) => {
-    const updated = crmState.updateTicketStatus(id, newStatus);
-    setTickets(updated);
-    
-    // Update local selected ticket
-    const current = updated.find(t => t.id === id);
-    setSelectedTicket(current);
-    
-    window.dispatchEvent(new Event('storage'));
+  const handleUpdateStatus = async (id, newStatus) => {
+    try {
+      await ticketService.updateStatus(id, newStatus);
+      await loadTickets();
+
+      // Update local selected ticket from refreshed list
+      setSelectedTicket(prev => prev ? { ...prev, status: newStatus } : prev);
+    } catch (err) {
+      console.error('Gagal update status tiket:', err);
+    }
   };
 
-  const handleUpdatePriority = (id, newPriority) => {
-    const updated = crmState.updateTicketPriority(id, newPriority);
-    setTickets(updated);
-    
-    // Update local selected ticket
-    const current = updated.find(t => t.id === id);
-    setSelectedTicket(current);
-    
-    window.dispatchEvent(new Event('storage'));
+  const handleUpdatePriority = async (id, newPriority) => {
+    try {
+      await ticketService.updatePriority(id, newPriority);
+      await loadTickets();
+
+      // Update local selected ticket
+      setSelectedTicket(prev => prev ? { ...prev, priority: newPriority } : prev);
+    } catch (err) {
+      console.error('Gagal update prioritas tiket:', err);
+    }
   };
 
-  const handleSendReply = (e) => {
+  const handleSendReply = async (e) => {
     e.preventDefault();
     if (!replyText.trim() || !selectedTicket) return;
 
@@ -78,21 +84,26 @@ export default function Tickets() {
       if (u && u.name) adminName = u.name;
     } catch (_) {}
 
-    const updated = crmState.replyTicket(
-      selectedTicket.id,
-      replyText,
-      'admin',
-      adminName
-    );
+    try {
+      await ticketService.reply(
+        selectedTicket.id,
+        replyText,
+        'admin',
+        adminName
+      );
 
-    setReplyText('');
-    setTickets(updated);
-    
-    // Update local selected ticket
-    const current = updated.find(t => t.id === selectedTicket.id);
-    setSelectedTicket(current);
+      setReplyText('');
+      await loadTickets();
 
-    window.dispatchEvent(new Event('storage'));
+      // Refresh the selected ticket from updated list
+      setTickets(prev => {
+        const current = prev.find(t => t.id === selectedTicket.id);
+        if (current) setSelectedTicket(current);
+        return prev;
+      });
+    } catch (err) {
+      console.error('Gagal mengirim balasan:', err);
+    }
   };
 
   // Filtered List
@@ -101,7 +112,7 @@ export default function Tickets() {
     const matchPriority = priorityFilter === 'Semua' || t.priority === priorityFilter;
     const matchSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                         t.ownerName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                        t.id.toLowerCase().includes(searchQuery.toLowerCase());
+                        String(t.id).toLowerCase().includes(searchQuery.toLowerCase());
     return matchStatus && matchPriority && matchSearch;
   });
 
@@ -274,68 +285,78 @@ export default function Tickets() {
 
         {/* Tickets Table */}
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ background: '#fafafa', borderBottom: '1px solid var(--border-color)' }}>
-                {['ID Tiket', 'Member & Hewan', 'Judul Keluhan', 'Kategori', 'Prioritas', 'Status', 'Tanggal Dibuat', 'Aksi'].map(col => (
-                  <th key={col} style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTickets.length === 0 ? (
-                <tr>
-                  <td colSpan="8" style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
-                    <Ticket size={32} style={{ margin: '0 auto 8px', opacity: 0.3 }} />
-                    <p style={{ fontSize: 13 }}>Tidak ada tiket keluhan ditemukan.</p>
-                  </td>
+          {loading ? (
+            <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              Memuat data...
+            </div>
+          ) : error ? (
+            <div style={{ padding: 48, textAlign: 'center', color: '#e03131', fontSize: 13 }}>
+              {error}
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: '#fafafa', borderBottom: '1px solid var(--border-color)' }}>
+                  {['ID Tiket', 'Member & Hewan', 'Judul Keluhan', 'Kategori', 'Prioritas', 'Status', 'Tanggal Dibuat', 'Aksi'].map(col => (
+                    <th key={col} style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                      {col}
+                    </th>
+                  ))}
                 </tr>
-              ) : (
-                filteredTickets.map((t, idx) => (
-                  <tr key={t.id} style={{ borderBottom: idx < filteredTickets.length - 1 ? '1px solid var(--border-color)' : 'none', fontSize: 12.5 }}>
-                    <td style={{ padding: '14px 18px', fontWeight: 700, color: 'var(--text-primary)' }}>#{t.id}</td>
-                    <td style={{ padding: '14px 18px' }}>
-                      <div style={{ fontWeight: 650 }}>{t.ownerName}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Pet: {t.petName}</div>
-                    </td>
-                    <td style={{ padding: '14px 18px', fontWeight: 500, color: '#334155', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {t.title}
-                    </td>
-                    <td style={{ padding: '14px 18px' }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: '#f1f5f9', color: '#475569' }}>
-                        {t.category}
-                      </span>
-                    </td>
-                    <td style={{ padding: '14px 18px' }}>{getPriorityBadge(t.priority)}</td>
-                    <td style={{ padding: '14px 18px' }}>{getStatusBadge(t.status)}</td>
-                    <td style={{ padding: '14px 18px', color: 'var(--text-muted)' }}>{t.createdAt}</td>
-                    <td style={{ padding: '14px 18px' }}>
-                      <button
-                        onClick={() => setSelectedTicket(t)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '5px 10px',
-                          borderRadius: 6,
-                          border: '1px solid var(--border-color)',
-                          background: 'white',
-                          cursor: 'pointer',
-                          fontSize: 11.5,
-                          fontWeight: 600,
-                          color: 'var(--text-secondary)'
-                        }}
-                      >
-                        <Eye size={12} /> Detail
-                      </button>
+              </thead>
+              <tbody>
+                {filteredTickets.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <Ticket size={32} style={{ margin: '0 auto 8px', opacity: 0.3 }} />
+                      <p style={{ fontSize: 13 }}>Tidak ada tiket keluhan ditemukan.</p>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredTickets.map((t, idx) => (
+                    <tr key={t.id} style={{ borderBottom: idx < filteredTickets.length - 1 ? '1px solid var(--border-color)' : 'none', fontSize: 12.5 }}>
+                      <td style={{ padding: '14px 18px', fontWeight: 700, color: 'var(--text-primary)' }}>#{t.id}</td>
+                      <td style={{ padding: '14px 18px' }}>
+                        <div style={{ fontWeight: 650 }}>{t.ownerName}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Pet: {t.petName}</div>
+                      </td>
+                      <td style={{ padding: '14px 18px', fontWeight: 500, color: '#334155', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t.title}
+                      </td>
+                      <td style={{ padding: '14px 18px' }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: '#f1f5f9', color: '#475569' }}>
+                          {t.category}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 18px' }}>{getPriorityBadge(t.priority)}</td>
+                      <td style={{ padding: '14px 18px' }}>{getStatusBadge(t.status)}</td>
+                      <td style={{ padding: '14px 18px', color: 'var(--text-muted)' }}>{t.createdAt}</td>
+                      <td style={{ padding: '14px 18px' }}>
+                        <button
+                          onClick={() => setSelectedTicket(t)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '5px 10px',
+                            borderRadius: 6,
+                            border: '1px solid var(--border-color)',
+                            background: 'white',
+                            cursor: 'pointer',
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            color: 'var(--text-secondary)'
+                          }}
+                        >
+                          <Eye size={12} /> Detail
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -441,7 +462,7 @@ export default function Tickets() {
 
             {/* Conversation Timeline */}
             <div style={{ flex: 1, padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16, background: '#f8fafc' }}>
-              {selectedTicket.conversations.map((msg, idx) => {
+              {(selectedTicket.conversations || []).map((msg, idx) => {
                 const isAdmin = msg.role === 'admin';
                 return (
                   <div 

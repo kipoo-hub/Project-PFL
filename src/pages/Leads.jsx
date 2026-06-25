@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
-import { crmState } from '../lib/crmState';
+import { leadService } from '../lib/supabaseService';
 import { 
   Users, UserCheck, MessageSquare, Phone, 
   Mail, Search, CheckCircle2, XCircle, AlertCircle, Sparkles, X, Check
@@ -28,6 +28,8 @@ const badgeStyle = (color, bg) => ({
 
 export default function Leads() {
   const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('Semua');
   const [selectedLead, setSelectedLead] = useState(null);
@@ -39,8 +41,19 @@ export default function Leads() {
   const [successToast, setSuccessToast] = useState('');
 
   useEffect(() => {
-    crmState.init();
-    setLeads(crmState.getLeads());
+    const fetchLeads = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await leadService.getAll();
+        setLeads(data || []);
+      } catch (err) {
+        setError('Gagal memuat data leads.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLeads();
   }, []);
 
   const handleOpenContact = (lead) => {
@@ -48,46 +61,44 @@ export default function Leads() {
     setShowContactModal(true);
   };
 
-  const handleSendContact = (e) => {
+  const handleSendContact = async (e) => {
     e.preventDefault();
     if (!selectedLead) return;
 
-    // Simulate sending message
-    const updated = crmState.updateLeadStatus(selectedLead.id, 'Dihubungi');
-    setLeads(updated);
+    try {
+      await leadService.updateStatus(selectedLead.id, 'Dihubungi');
+      const data = await leadService.getAll();
+      setLeads(data || []);
+    } catch (err) {
+      console.error('Gagal mengubah status lead:', err);
+    }
     setShowContactModal(false);
     setSuccessToast(`Pesan berhasil dikirim ke ${selectedLead.visitorName} melalui ${contactMethod}!`);
-    
-    // Notify other tabs
-    window.dispatchEvent(new Event('storage'));
-
-    setTimeout(() => {
-      setSuccessToast('');
-    }, 3500);
+    setTimeout(() => { setSuccessToast(''); }, 3500);
   };
 
-  const handleConvertLead = (lead) => {
-    const updated = crmState.updateLeadStatus(lead.id, 'Konversi');
-    setLeads(updated);
+  const handleConvertLead = async (lead) => {
+    try {
+      await leadService.updateStatus(lead.id, 'Konversi');
+      const data = await leadService.getAll();
+      setLeads(data || []);
+    } catch (err) {
+      console.error('Gagal mengkonversi lead:', err);
+    }
     setSuccessToast(`Selamat! ${lead.visitorName} resmi terkonversi menjadi member.`);
-    
-    window.dispatchEvent(new Event('storage'));
-
-    setTimeout(() => {
-      setSuccessToast('');
-    }, 3500);
+    setTimeout(() => { setSuccessToast(''); }, 3500);
   };
 
-  const handleIgnoreLead = (lead) => {
-    const updated = crmState.updateLeadStatus(lead.id, 'Tidak Tertarik');
-    setLeads(updated);
+  const handleIgnoreLead = async (lead) => {
+    try {
+      await leadService.updateStatus(lead.id, 'Tidak Tertarik');
+      const data = await leadService.getAll();
+      setLeads(data || []);
+    } catch (err) {
+      console.error('Gagal mengabaikan lead:', err);
+    }
     setSuccessToast(`Status ${lead.visitorName} diubah ke Tidak Tertarik.`);
-    
-    window.dispatchEvent(new Event('storage'));
-
-    setTimeout(() => {
-      setSuccessToast('');
-    }, 3000);
+    setTimeout(() => { setSuccessToast(''); }, 3000);
   };
 
   const getStatusCfg = (status) => {
@@ -112,8 +123,19 @@ export default function Leads() {
     return matchesSearch && l.status === filter;
   });
 
-  // KPI Calculations
-  const stats = crmState.getCRMStats();
+  // KPI Calculations (computed locally from loaded leads)
+  const today = new Date().toLocaleDateString('id-ID');
+  const stats = {
+    totalLeads: leads.length,
+    newLeadsToday: leads.filter(l => l.status === 'Baru' || (l.createdAt && new Date(l.createdAt).toLocaleDateString('id-ID') === today)).length,
+    contactedLeads: leads.filter(l => l.status === 'Dihubungi').length,
+    conversionRate: leads.length > 0
+      ? Math.round((leads.filter(l => l.status === 'Konversi').length / leads.length) * 100)
+      : 0,
+  };
+
+  if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Memuat data...</div>;
+  if (error) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e53e3e', fontSize: 14 }}>{error}</div>;
 
   return (
     <div style={{ flex: 1, padding: 24, background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto' }}>

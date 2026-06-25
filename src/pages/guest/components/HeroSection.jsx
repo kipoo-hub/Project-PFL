@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { crmState } from '../../../lib/crmState';
+import { dashboardService } from '../../../lib/supabaseService';
 
 function AnimatedCounter({ target, suffix = '', duration = 1500, isFloat = false }) {
   const [count, setCount] = useState(0);
@@ -51,31 +51,18 @@ export default function HeroSection() {
   });
 
   useEffect(() => {
-    try {
-      crmState.init();
-      const pipeline = crmState.getPipelineData();
-      const allMembers = [
-        ...(pipeline.BARU || []),
-        ...(pipeline.AKTIF || []),
-        ...(pipeline.SETIA || []),
-        ...(pipeline.TIDAK_AKTIF || [])
-      ];
-      const activeMembersCount = (pipeline.BARU?.length || 0) + (pipeline.AKTIF?.length || 0) + (pipeline.SETIA?.length || 0);
-
-      let totalPets = 0;
-      allMembers.forEach(m => {
-        if (m.pets && Array.isArray(m.pets)) {
-          totalPets += m.pets.length;
-        }
-      });
-
-      setStats({
-        patients: 5000 + totalPets,
-        members: 500 + activeMembersCount
-      });
-    } catch (e) {
-      console.error(e);
-    }
+    const loadStats = async () => {
+      try {
+        const data = await dashboardService.getStats();
+        setStats({
+          patients: 5000 + (data.totalPasien || 0),
+          members: 500 + (data.totalMembers || 0)
+        });
+      } catch (e) {
+        console.error("Failed to load hero stats:", e);
+      }
+    };
+    loadStats();
   }, []);
 
   const handleScrollTo = (id) => {

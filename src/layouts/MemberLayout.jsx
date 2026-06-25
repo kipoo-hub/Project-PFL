@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
 import { useMemberAuth } from '../context/MemberAuthContext';
-import { crmState } from '../lib/crmState';
+import { vaccineService, jadwalService, chatService, ticketService } from '../lib/supabaseService';
 import '../pages/member/member-dashboard.css';
 
 const NAV_ITEMS_TEMPLATE = [
-  { id: 'dashboard', icon: '🏠', label: 'Dashboard', path: '/member/dashboard' },
+  { id: 'dashboard', icon: '🏠', label: 'Dashboard', path: '/dashboard' },
   { id: 'pets', icon: '🐾', label: 'Hewan Peliharaan', path: '/member/hewan' },
   { id: 'appointments', icon: '📅', label: 'Janji Temu', path: '/member/janji' },
   { id: 'vaccines', icon: '💉', label: 'Jadwal Vaksinasi', path: '/member/vaksin' },
@@ -48,28 +48,33 @@ export default function MemberLayout() {
   const [chatsCount, setChatsCount] = useState(0);
   const [ticketsCount, setTicketsCount] = useState(0);
 
-  const loadCounts = () => {
-    crmState.init();
-    const vacList = crmState.getVaccines();
-    setVaccines(vacList);
-
-    const email = member?.email || 'demo@email.com';
-    
-    // Appointments
-    const appts = crmState.getMemberAppointments(email);
-    const pendingAppts = appts.filter(a => a.status === 'Menunggu' || a.status === 'Dikonfirmasi').length;
-    setApptsCount(pendingAppts);
-
-    // Chats
-    const mChats = crmState.getMemberChats(email);
-    const totalUnread = mChats.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
-    setChatsCount(totalUnread);
-
-    // Tickets
-    const tList = crmState.getTickets();
+  const loadCounts = async () => {
+    if (!member) return;
+    const email = member.email || 'demo@email.com';
     const myEmail = email === 'demo@email.com' ? 'budi@email.com' : email;
-    const activeTickets = tList.filter(t => t.email === myEmail && (t.status === 'Baru' || t.status === 'Dalam Proses')).length;
-    setTicketsCount(activeTickets);
+
+    try {
+      // Vaccines
+      const vacList = await vaccineService.getByEmail(myEmail);
+      setVaccines(vacList);
+
+      // Appointments
+      const appts = await jadwalService.getByMemberId(member.id);
+      const pendingAppts = appts.filter(a => a.status === 'Menunggu' || a.status === 'Dikonfirmasi').length;
+      setApptsCount(pendingAppts);
+
+      // Chats
+      const mChats = await chatService.getByMemberId(member.id);
+      const totalUnread = mChats.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+      setChatsCount(totalUnread);
+
+      // Tickets
+      const tList = await ticketService.getByEmail(myEmail);
+      const activeTickets = tList.filter(t => t.status === 'Baru' || t.status === 'Dalam Proses').length;
+      setTicketsCount(activeTickets);
+    } catch (err) {
+      console.error('Failed to load MemberLayout counts:', err);
+    }
   };
 
   useEffect(() => {
@@ -101,14 +106,14 @@ export default function MemberLayout() {
 
   const handleLogout = () => {
     logout();
-    navigate('/guest', { replace: true });
+    navigate('/member/login', { replace: true });
   };
 
   const isItemActive = (item) => {
     if (item.id === 'dashboard') {
-      return location.pathname === '/member/dashboard';
+      return location.pathname === '/dashboard';
     }
-    return location.pathname.startsWith(item.path) && item.id !== 'dashboard' && item.path !== '/member/dashboard';
+    return location.pathname.startsWith(item.path) && item.id !== 'dashboard' && item.path !== '/dashboard';
   };
 
   const navItems = NAV_ITEMS_TEMPLATE.map(item => {

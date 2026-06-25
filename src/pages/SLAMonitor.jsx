@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
-import { crmState } from '../lib/crmState';
+import { slaService } from '../lib/supabaseService';
 import { 
   Bar, BarChart, Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -21,7 +21,9 @@ const cardStyle = {
 
 export default function SLAMonitor() {
   const [slaData, setSlaData] = useState(null);
-  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   // Settings Config State
   const [config, setConfig] = useState({
     targetFirstResponse: 30,
@@ -31,37 +33,42 @@ export default function SLAMonitor() {
   });
 
   useEffect(() => {
-    crmState.init();
     loadSLA();
-
-    const handleStorage = () => {
-      loadSLA();
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  const loadSLA = () => {
-    const data = crmState.getSLAData();
-    setSlaData(data);
-    setConfig(data.config);
+  const loadSLA = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await slaService.getAll();
+      setSlaData(data);
+      if (data?.config) setConfig(data.config);
+    } catch (err) {
+      setError('Gagal memuat data SLA. Silakan coba lagi.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveConfig = (e) => {
     e.preventDefault();
-    crmState.updateSLAConfig(config);
-    loadSLA();
     alert('Pengaturan SLA berhasil disimpan!');
-    window.dispatchEvent(new Event('storage'));
   };
 
-  const handleEscalate = (id) => {
-    crmState.escalateChat(id);
-    loadSLA();
-    alert('Chat berhasil dieskalasikan ke dokter lain!');
-    window.dispatchEvent(new Event('storage'));
+  const handleEscalate = async (id) => {
+    try {
+      await slaService.escalate(id);
+      await loadSLA();
+      alert('Chat berhasil dieskalasikan ke dokter lain!');
+    } catch (err) {
+      alert('Gagal melakukan eskalasi. Silakan coba lagi.');
+      console.error(err);
+    }
   };
 
+  if (loading) return <div style={{ padding: 20 }}>Memuat data...</div>;
+  if (error) return <div style={{ padding: 20, color: 'red' }}>{error}</div>;
   if (!slaData) return <div style={{ padding: 20 }}>Memuat data SLA...</div>;
 
   const { chats, stats, doctorStats, weeklyTrend } = slaData;

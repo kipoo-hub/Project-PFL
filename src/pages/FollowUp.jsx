@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
-import { crmState } from '../lib/crmState';
+import { followupService } from '../lib/supabaseService';
 import { 
   Users, CheckCircle2, XCircle, Clock, 
   MessageSquare, Save, Search, Sparkles, Phone
@@ -34,16 +34,27 @@ export default function FollowUp() {
   const [notesInput, setNotesInput] = useState('');
   const [statusInput, setStatusInput] = useState('Belum');
   const [successToast, setSuccessToast] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    crmState.init();
-    const data = crmState.getFollowups();
-    setTasks(data);
-    if (data.length > 0) {
-      setSelectedTask(data[0]);
-      setNotesInput(data[0].notes);
-      setStatusInput(data[0].status);
-    }
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = await followupService.getAll();
+        setTasks(data);
+        if (data.length > 0) {
+          setSelectedTask(data[0]);
+          setNotesInput(data[0].notes);
+          setStatusInput(data[0].status);
+        }
+      } catch (err) {
+        setError('Gagal memuat data follow-up.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   const handleSelectTask = (task) => {
@@ -52,25 +63,26 @@ export default function FollowUp() {
     setStatusInput(task.status);
   };
 
-  const handleSaveFollowup = (e) => {
+  const handleSaveFollowup = async (e) => {
     e.preventDefault();
     if (!selectedTask) return;
 
-    const updated = crmState.updateFollowup(selectedTask.id, statusInput, notesInput);
-    setTasks(updated);
-    
-    // Update selected task reference
-    const newSelected = updated.find(t => t.id === selectedTask.id);
-    setSelectedTask(newSelected);
-    
-    setSuccessToast(`Follow-up untuk ${selectedTask.petName} berhasil disimpan!`);
-    
-    // Dispatch storage event to notify other components/tabs
-    window.dispatchEvent(new Event('storage'));
+    try {
+      await followupService.update(selectedTask.id, statusInput, notesInput);
+      const updated = await followupService.getAll();
+      setTasks(updated);
 
-    setTimeout(() => {
-      setSuccessToast('');
-    }, 3000);
+      // Update selected task reference
+      const newSelected = updated.find(t => t.id === selectedTask.id);
+      setSelectedTask(newSelected);
+
+      setSuccessToast(`Follow-up untuk ${selectedTask.petName} berhasil disimpan!`);
+      setTimeout(() => {
+        setSuccessToast('');
+      }, 3000);
+    } catch (err) {
+      setError('Gagal menyimpan follow-up.');
+    }
   };
 
   const filteredTasks = tasks.filter(t => {
@@ -97,6 +109,9 @@ export default function FollowUp() {
   const totalBelum = tasks.filter(t => t.status === 'Belum').length;
   const totalSudah = tasks.filter(t => t.status === 'Sudah Dihubungi').length;
   const totalTidakPerlu = tasks.filter(t => t.status === 'Tidak Perlu').length;
+
+  if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--text-muted)' }}>Memuat data...</div>;
+  if (error) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--accent-red)' }}>{error}</div>;
 
   return (
     <div style={{ flex: 1, padding: 24, background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto' }}>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { crmState } from '../lib/crmState';
+import { followupService } from '../lib/supabaseService';
 import PageHeader from '../components/PageHeader';
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
@@ -41,17 +41,30 @@ const ChartTitle = ({ title, subtitle }) => (
 const Analitik = () => {
   const [stats, setStats] = useState({ successRate: 84, avgTime: 4.2 });
 
-  useEffect(() => {
-    crmState.init();
-    const s = crmState.getCRMStats();
-    setStats({ successRate: s.successRate, avgTime: s.avgTime });
+  const loadStats = async () => {
+    try {
+      const followups = await followupService.getAll();
+      const totalFollowups = followups.length;
+      const resolvedFollowups = followups.filter(f => f.status === 'Sudah Dihubungi' || f.status === 'Tidak Perlu' || f.status === 'Sudah').length;
+      const successRate = totalFollowups > 0 ? Math.round((resolvedFollowups / totalFollowups) * 100) : 0;
+      setStats({ successRate, avgTime: 4.2 });
+    } catch (err) {
+      console.error('Failed to load Analitik stats:', err);
+    }
+  };
 
-    const handleStorage = () => {
-      const updatedStats = crmState.getCRMStats();
-      setStats({ successRate: updatedStats.successRate, avgTime: updatedStats.avgTime });
+  useEffect(() => {
+    loadStats();
+
+    const handleUpdate = () => {
+      loadStats();
     };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('crm_change', handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('crm_change', handleUpdate);
+    };
   }, []);
 
   return (

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useMemberAuth } from '../../context/MemberAuthContext';
-import { crmState } from '../../lib/crmState';
+import { ticketService } from '../../lib/supabaseService';
 
 export default function MemberTickets() {
-  const { member } = useMemberAuth();
+  const member = (() => {
+    try { return JSON.parse(localStorage.getItem('memberUser')); } catch { return null; }
+  })();
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [replyText, setReplyText] = useState('');
-  
+  const [loading, setLoading] = useState(true);
+
   // Modal Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTicket, setNewTicket] = useState({
@@ -19,34 +21,34 @@ export default function MemberTickets() {
   });
 
   useEffect(() => {
-    crmState.init();
     loadTickets();
-  }, [member]);
+  }, []);
 
-  const loadTickets = () => {
-    const all = crmState.getTickets();
-    // Filter for current member (support demo user to budi@email.com mapping too)
-    const filtered = all.filter(t => 
-      t.email?.toLowerCase() === member?.email?.toLowerCase() || 
-      (member?.email === 'demo@email.com' && t.email === 'budi@email.com')
-    );
-    setTickets(filtered);
-    
-    // Refresh selected ticket detail if open
-    if (selectedTicket) {
-      const refreshed = filtered.find(t => t.id === selectedTicket.id);
-      if (refreshed) setSelectedTicket(refreshed);
+  const loadTickets = async () => {
+    if (!member?.email) return;
+    setLoading(true);
+    try {
+      const data = await ticketService.getByEmail(member.email);
+      setTickets(data || []);
+
+      // Refresh selected ticket detail if open
+      if (selectedTicket) {
+        const refreshed = (data || []).find(t => t.id === selectedTicket.id);
+        if (refreshed) setSelectedTicket(refreshed);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCreateTicket = (e) => {
+  const handleCreateTicket = async (e) => {
     e.preventDefault();
     if (!newTicket.title || !newTicket.description) return;
 
-    crmState.createTicket({
+    await ticketService.create({
       ...newTicket,
       ownerName: member?.name || 'Member',
-      email: member?.email || 'budi@email.com'
+      email: member?.email || ''
     });
 
     setIsModalOpen(false);
@@ -57,17 +59,17 @@ export default function MemberTickets() {
       description: '',
       urgency: 'Sedang'
     });
-    
-    loadTickets();
+
+    await loadTickets();
     // Dispatch storage event to update sidebar badges
     window.dispatchEvent(new Event('storage'));
   };
 
-  const handleSendReply = (e) => {
+  const handleSendReply = async (e) => {
     e.preventDefault();
     if (!replyText.trim() || !selectedTicket) return;
 
-    crmState.replyTicket(
+    await ticketService.reply(
       selectedTicket.id,
       replyText,
       'member',
@@ -75,7 +77,7 @@ export default function MemberTickets() {
     );
 
     setReplyText('');
-    loadTickets();
+    await loadTickets();
     window.dispatchEvent(new Event('storage'));
   };
 
@@ -96,6 +98,10 @@ export default function MemberTickets() {
       default: return { background: '#f1f3f5', color: '#495057' };
     }
   };
+
+  if (loading) {
+    return <div className="p-10 text-center text-slate-400">Memuat data...</div>;
+  }
 
   return (
     <div className="pb-10 flex flex-col gap-6">

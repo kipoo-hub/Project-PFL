@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 import { Plus, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, X, Check } from 'lucide-react';
-import { DAYS, MONTHS, allAppointments } from '../data/jadwal';
-import { crmState } from '../lib/crmState';
+import { DAYS, MONTHS } from '../data/jadwal';
+import { jadwalService } from '../lib/supabaseService';
 
 const statusCfg = {
   'Selesai':    { bg:'#C6F6D5', color:'#48BB78', icon: CheckCircle2 },
@@ -59,45 +59,41 @@ const JadwalTemu = () => {
   const [currentMonth, setCurrentMonth] = useState({ year: 2025, month: 4 });
   const [selectedDate, setSelectedDate] = useState('2025-05-11');
   const [showModal, setShowModal] = useState(false);
-  const [dbAppointments, setDbAppointments] = useState({});
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [successToast, setSuccessToast] = useState('');
 
-  useEffect(() => {
-    crmState.init();
-    const stored = localStorage.getItem('vet_crm_appointments');
-    if (!stored) {
-      localStorage.setItem('vet_crm_appointments', JSON.stringify(allAppointments));
-      setDbAppointments(allAppointments);
-    } else {
-      setDbAppointments(JSON.parse(stored));
+  const fetchAppointments = async (dateStr) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await jadwalService.getByDate(dateStr);
+      setAppointments(data || []);
+    } catch (err) {
+      setError('Gagal memuat jadwal.');
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
 
-  const handleUpdateStatus = (dateStr, apptId, newStatus) => {
-    const updated = { ...dbAppointments };
-    const list = updated[dateStr] || [];
-    
-    const idx = list.findIndex(a => a.id === apptId);
-    if (idx !== -1) {
-      const appt = { ...list[idx], status: newStatus };
-      list[idx] = appt;
-      updated[dateStr] = list;
-      
-      localStorage.setItem('vet_crm_appointments', JSON.stringify(updated));
-      setDbAppointments(updated);
-      
+  useEffect(() => {
+    fetchAppointments(selectedDate);
+  }, [selectedDate]);
+
+  const handleUpdateStatus = async (apptId, newStatus) => {
+    try {
+      await jadwalService.updateStatus(apptId, newStatus);
       if (newStatus === 'Selesai') {
-        crmState.addFollowUpTask(appt);
-        setSuccessToast(`Janji temu selesai! Task follow-up untuk ${appt.hewan} otomatis dibuat.`);
+        const appt = appointments.find(a => a.id === apptId);
+        setSuccessToast(`Janji temu selesai! Task follow-up untuk ${appt?.hewan ?? ''} otomatis dibuat.`);
       } else {
         setSuccessToast(`Jadwal janji temu berhasil diubah ke: ${newStatus}`);
       }
-
-      window.dispatchEvent(new Event('storage'));
-
-      setTimeout(() => {
-        setSuccessToast('');
-      }, 3500);
+      await fetchAppointments(selectedDate);
+      setTimeout(() => setSuccessToast(''), 3500);
+    } catch (err) {
+      setError('Gagal mengubah status jadwal.');
     }
   };
 
@@ -105,7 +101,6 @@ const JadwalTemu = () => {
   const firstDay = new Date(currentMonth.year, currentMonth.month, 1).getDay();
 
   const fmtDate = (y, m, d) => `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-  const appointments = dbAppointments[selectedDate] || [];
 
   const prevMonth = () => setCurrentMonth(c => c.month === 0 ? {year:c.year-1,month:11} : {year:c.year,month:c.month-1});
   const nextMonth = () => setCurrentMonth(c => c.month === 11 ? {year:c.year+1,month:0} : {year:c.year,month:c.month+1});
@@ -113,7 +108,9 @@ const JadwalTemu = () => {
   const selectedLabel = (() => {
     const d = new Date(selectedDate + 'T00:00:00');
     return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-  })();  return (
+  })();
+
+  return (
     <div style={{ flex:1, padding:24, background:'#F7F8FC', position: 'relative' }}>
       {successToast && (
         <div style={{
@@ -152,7 +149,6 @@ const JadwalTemu = () => {
               const day = i + 1;
               const dateStr = fmtDate(currentMonth.year, currentMonth.month, day);
               const isSelected = dateStr === selectedDate;
-              const hasAppt = !!allAppointments[dateStr];
               const isToday = dateStr === '2025-05-11';
               return (
                 <button key={day} id={`cal-day-${dateStr}`} onClick={() => setSelectedDate(dateStr)}
@@ -162,7 +158,6 @@ const JadwalTemu = () => {
                     position:'relative', transition:'all 0.15s',
                   }}>
                   {day}
-                  {hasAppt && !isSelected && <div style={{ position:'absolute', bottom:2, left:'50%', transform:'translateX(-50%)', width:4, height:4, borderRadius:'50%', background:'#4FD1C5' }} />}
                 </button>
               );
             })}
@@ -170,8 +165,12 @@ const JadwalTemu = () => {
 
           {/* Legend */}
           <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid #E2E8F0', display:'flex', flexDirection:'column', gap:8 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:'#A0AEC0', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Ringkasan Bulan Ini</div>
-            {[['Total Janji',Object.values(allAppointments).flat().length],['Selesai',Object.values(allAppointments).flat().filter(a=>a.status==='Selesai').length],['Dibatalkan',Object.values(allAppointments).flat().filter(a=>a.status==='Dibatalkan').length]].map(([k,v]) => (
+            <div style={{ fontSize:11, fontWeight:600, color:'#A0AEC0', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 }}>Ringkasan Hari Ini</div>
+            {[
+              ['Total Janji', appointments.length],
+              ['Selesai', appointments.filter(a=>a.status==='Selesai').length],
+              ['Dibatalkan', appointments.filter(a=>a.status==='Dibatalkan').length],
+            ].map(([k,v]) => (
               <div key={k} style={{ display:'flex', justifyContent:'space-between', fontSize:13 }}>
                 <span style={{ color:'#718096' }}>{k}</span>
                 <span style={{ fontWeight:700, color:'#2D3748' }}>{v}</span>
@@ -192,7 +191,11 @@ const JadwalTemu = () => {
             </button>
           </div>
 
-          {appointments.length === 0 ? (
+          {loading ? (
+            <div style={{ padding:60, textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>Memuat data...</div>
+          ) : error ? (
+            <div style={{ padding:60, textAlign:'center', color:'#F56565', fontSize:14 }}>{error}</div>
+          ) : appointments.length === 0 ? (
             <div style={{ padding:60, textAlign:'center', color:'var(--text-muted)' }}>
               <Clock size={40} style={{ margin:'0 auto 12px', display:'block', opacity:0.3 }} />
               <p>Tidak ada jadwal pada tanggal ini.</p>
@@ -222,14 +225,14 @@ const JadwalTemu = () => {
                       <td style={{ padding:'12px 16px' }}>
                         {a.status === 'Menunggu' ? (
                           <div style={{ display:'flex', gap:6 }}>
-                            <button 
-                              onClick={() => handleUpdateStatus(selectedDate, a.id, 'Selesai')}
+                            <button
+                              onClick={() => handleUpdateStatus(a.id, 'Selesai')}
                               style={{ padding:'3px 8px', borderRadius:6, border:'none', background:'#e6fcf5', color:'#0ca678', fontSize:11, fontWeight:600, cursor:'pointer' }}
                             >
                               Selesai
                             </button>
-                            <button 
-                              onClick={() => handleUpdateStatus(selectedDate, a.id, 'Dibatalkan')}
+                            <button
+                              onClick={() => handleUpdateStatus(a.id, 'Dibatalkan')}
                               style={{ padding:'3px 8px', borderRadius:6, border:'none', background:'#fff5f5', color:'#e03131', fontSize:11, fontWeight:600, cursor:'pointer' }}
                             >
                               Batal

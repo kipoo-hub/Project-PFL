@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../../context/MemberAuthContext';
-import { crmState } from '../../lib/crmState';
+import { memberProfileService, pipelineService } from '../../lib/supabaseService';
 
 export default function MemberProfile() {
   const { member, logout } = useMemberAuth();
@@ -29,41 +29,54 @@ export default function MemberProfile() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const loadProfile = () => {
-    crmState.init();
-    const idOrEmail = member?.email || 'demo@email.com';
-    const data = crmState.getMemberProfile(idOrEmail);
-    if (data) {
-      setProfile(data);
-      setName(data.name || '');
-      setPhone(data.phone || '');
-      setEmail(data.email || '');
-      setAlamat(data.alamat || 'Jl. Indah Lestari No. 42, Bandung');
-      setTanggalLahir(data.tanggalLahir || '1990-05-15');
+  const loadProfile = async () => {
+    try {
+      const memberUser = JSON.parse(localStorage.getItem('memberUser'));
+      if (!memberUser?.id) return;
+      
+      const data = await memberProfileService.getById(memberUser.id);
+      if (data) {
+        // Get pipeline data for stage/visits
+        const pipeline = await pipelineService.getAll();
+        const allPipelineMembers = [...(pipeline.BARU || []), ...(pipeline.AKTIF || []), ...(pipeline.SETIA || []), ...(pipeline.TIDAK_AKTIF || [])];
+        const pipelineMember = allPipelineMembers.find(m => m.email?.toLowerCase() === data.email?.toLowerCase());
+        
+        const profileData = {
+          ...data,
+          stage: pipelineMember?.stage || 'BARU',
+          visits: pipelineMember?.visits || 0,
+          totalTransaksi: pipelineMember?.totalTransaksi || 0,
+        };
+        setProfile(profileData);
+        setName(data.name || '');
+        setPhone(data.phone || '');
+        setEmail(data.email || '');
+        setAlamat(data.alamat || 'Jl. Indah Lestari No. 42, Bandung');
+        setTanggalLahir(data.tanggalLahir || '1990-05-15');
+      }
+    } catch (err) {
+      console.error('Failed to load profile:', err);
     }
   };
 
   useEffect(() => {
     loadProfile();
-
-    const handleUpdate = () => {
-      loadProfile();
-    };
-    window.addEventListener('crm_change', handleUpdate);
-    return () => window.removeEventListener('crm_change', handleUpdate);
   }, [member]);
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    const idOrEmail = member?.email || 'demo@email.com';
-    const updated = crmState.updateProfile(idOrEmail, {
-      name,
-      phone,
-      alamat,
-      tanggalLahir
-    });
-    alert('Profil Anda berhasil diperbarui!');
-    loadProfile();
+    try {
+      const memberUser = JSON.parse(localStorage.getItem('memberUser'));
+      if (!memberUser?.id) return;
+      await memberProfileService.update(memberUser.id, { name, email });
+      // Update localStorage to keep it in sync
+      const updated = { ...memberUser, name };
+      localStorage.setItem('memberUser', JSON.stringify(updated));
+      alert('Profil Anda berhasil diperbarui!');
+      await loadProfile();
+    } catch (err) {
+      alert('Gagal memperbarui profil.');
+    }
   };
 
   const handleChangePasswordSubmit = (e) => {

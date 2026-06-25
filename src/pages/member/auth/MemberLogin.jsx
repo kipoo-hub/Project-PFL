@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useMemberAuth } from '../../../context/MemberAuthContext';
 import './member-auth.css';
+import { supabase } from '../../../lib/supabase';
 
 const LogoSVG = () => (
   <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
@@ -64,7 +65,7 @@ export default function MemberLogin() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useMemberAuth();
-  const from = location.state?.from?.pathname || '/member/dashboard';
+  const from = location.state?.from?.pathname === '/member/dashboard' ? '/dashboard' : (location.state?.from?.pathname || '/dashboard');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -80,18 +81,39 @@ export default function MemberLogin() {
     return errs;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
     setLoading(true);
-    setTimeout(() => {
-      const result = login({ email, password });
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('*')
+        .eq('email', email)
+        .eq('password', password)
+        .single();
+
+      if (error || !data) {
+        setErrors({ auth: 'Email atau password salah' });
+      } else {
+        login({
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          role: 'member',
+          created_at: data.created_at
+        });
+        navigate(from, { replace: true });
+      }
+    } catch (err) {
+      console.error(err);
+      setErrors({ auth: 'Terjadi kesalahan sistem' });
+    } finally {
       setLoading(false);
-      if (result.success) navigate(from, { replace: true });
-    }, 1000);
+    }
   };
 
   const EyeIcon = ({ show }) => (
@@ -172,6 +194,11 @@ export default function MemberLogin() {
           </div>
 
           <form id="member-login-form" onSubmit={handleSubmit} noValidate>
+            {errors.auth && (
+              <div className="mauth-field__error" style={{ marginBottom: 16 }}>
+                ⚠ {errors.auth}
+              </div>
+            )}
             {/* Email */}
             <div className="mauth-field">
               <label htmlFor="login-email-member">Email</label>

@@ -1,23 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { crmState } from '../../../lib/crmState';
+import { pipelineService } from '../../../lib/supabaseService';
 
 export default function TestimonialSection() {
   const [members, setMembers] = useState([]);
 
   useEffect(() => {
-    try {
-      crmState.init();
-      const pipeline = crmState.getPipelineData();
-      const allMembers = [
-        ...(pipeline.BARU || []),
-        ...(pipeline.AKTIF || []),
-        ...(pipeline.SETIA || []),
-        ...(pipeline.TIDAK_AKTIF || [])
-      ];
-      setMembers(allMembers);
-    } catch (e) {
-      console.error("Failed to load members for testimonials:", e);
-    }
+    const loadMembers = async () => {
+      try {
+        const pipeline = await pipelineService.getAll();
+        const allMembers = [
+          ...(pipeline.BARU || []),
+          ...(pipeline.AKTIF || []),
+          ...(pipeline.SETIA || []),
+          ...(pipeline.TIDAK_AKTIF || [])
+        ];
+        setMembers(allMembers);
+      } catch (e) {
+        console.error("Failed to load members for testimonials:", e);
+      }
+    };
+    loadMembers();
   }, []);
 
   const getInitials = (name) => {

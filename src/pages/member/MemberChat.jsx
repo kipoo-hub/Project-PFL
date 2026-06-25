@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useMemberAuth } from '../../context/MemberAuthContext';
-import { crmState } from '../../lib/crmState';
+import { chatService } from '../../lib/supabaseService';
+import { supabase } from '../../lib/supabase';
 
 export default function MemberChat() {
   const { member } = useMemberAuth();
@@ -12,34 +13,56 @@ export default function MemberChat() {
 
   const messagesEndRef = useRef(null);
 
-  const loadChats = (selectFirst = false) => {
-    crmState.init();
-    const email = member?.email || 'demo@email.com';
-    const list = crmState.getMemberChats(email);
-    setChats(list);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-    if (list.length > 0) {
-      if (selectFirst && !activeChat) {
-        setActiveChat(list[0]);
-      } else if (activeChat) {
-        // Refresh active chat data
-        const updatedActive = list.find(c => c.id === activeChat.id);
-        if (updatedActive) {
-          setActiveChat(updatedActive);
+  const loadChats = async (selectFirst = false) => {
+    const memberUser = JSON.parse(localStorage.getItem('memberUser'));
+    if (!memberUser?.id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const list = await chatService.getByMemberId(memberUser.id);
+      setChats(list);
+
+      if (list.length > 0) {
+        if (selectFirst && !activeChat) {
+          setActiveChat(list[0]);
+        } else if (activeChat) {
+          // Refresh active chat data
+          const updatedActive = list.find(c => c.id === activeChat.id);
+          if (updatedActive) {
+            setActiveChat(updatedActive);
+          }
         }
       }
+    } catch (err) {
+      setError('Gagal memuat percakapan.');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     loadChats(true);
+  }, []);
 
-    const handleUpdate = () => {
+  // Real-time subscription for active chat
+  useEffect(() => {
+    if (!activeChat?.id) return;
+
+    const subscription = chatService.subscribeToMessages(activeChat.id, () => {
       loadChats(false);
+    });
+
+    return () => {
+      if (subscription) supabase.removeChannel(subscription);
     };
-    window.addEventListener('crm_change', handleUpdate);
-    return () => window.removeEventListener('crm_change', handleUpdate);
-  }, [member]);
+  }, [activeChat?.id]);
+
+  const handleSelectChat = (chat) => {
+    setActiveChat(chat);
+  };
 
   // Scroll to bottom whenever messages list changes or active chat changes
   useEffect(() => {
@@ -48,17 +71,7 @@ export default function MemberChat() {
     }
   }, [activeChat?.messages, isTyping]);
 
-  const handleSelectChat = (chat) => {
-    // Mark as read locally
-    crmState.init();
-    const chatsList = JSON.parse(localStorage.getItem('vet_crm_chats_new') || '[]');
-    const updated = chatsList.map(c => c.id === chat.id ? { ...c, unreadCount: 0 } : c);
-    localStorage.setItem('vet_crm_chats_new', JSON.stringify(updated));
-    window.dispatchEvent(new Event('crm_change'));
-    setActiveChat(chat);
-  };
-
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     if (!inputText.trim() || !activeChat) return;
 
@@ -66,14 +79,13 @@ export default function MemberChat() {
     setInputText('');
 
     // Save member message
-    const updatedChat = crmState.sendMessage(activeChat.id, userMsg, 'member');
-    setActiveChat(updatedChat);
-    loadChats(false);
+    await chatService.sendMessage(activeChat.id, userMsg, 'member');
+    await loadChats(false);
 
     // Trigger Doctor Auto-reply Simulation
     setIsTyping(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       setIsTyping(false);
       
       const doctorReplies = [
@@ -88,9 +100,8 @@ export default function MemberChat() {
       const randomReply = doctorReplies[Math.floor(Math.random() * doctorReplies.length)];
       
       // Save doctor message
-      const finalChat = crmState.sendMessage(activeChat.id, randomReply, 'doctor');
-      setActiveChat(finalChat);
-      loadChats(false);
+      await chatService.sendMessage(activeChat.id, randomReply, 'doctor');
+      await loadChats(false);
     }, 2000);
   };
 

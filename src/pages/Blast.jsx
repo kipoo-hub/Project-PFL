@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { crmState } from '../lib/crmState';
+import { blastService, pipelineService } from '../lib/supabaseService';
 import { 
   Send, History, MessageSquare, Mail, 
   Users, Layers, Check, ChevronRight, CheckCircle2,
@@ -44,6 +44,9 @@ export default function Blast() {
   const [members, setMembers] = useState([]);
   const [blastHistory, setBlastHistory] = useState([]);
   const [segments, setSegments] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [segmentMembers, setSegmentMembers] = useState([]);
 
   // Step 1: Recipients State
   const [recipientType, setRecipientType] = useState('All'); // 'All', 'Segment', 'Manual'
@@ -64,11 +67,25 @@ export default function Blast() {
 
   // Initialize
   useEffect(() => {
-    crmState.init();
-    const allMembers = loadMembers();
-    setMembers(allMembers);
-    setBlastHistory(crmState.getBlastHistory());
-    setSegments(crmState.getSegments());
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [allMembers, history, segs] = await Promise.all([
+          pipelineService.getAll(),
+          blastService.getHistory(),
+          pipelineService.getSegments(),
+        ]);
+        setMembers(allMembers || []);
+        setBlastHistory(history || []);
+        setSegments(segs || {});
+      } catch (err) {
+        setError('Gagal memuat data blast.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
 
     // Parse URL query parameters if redirected from segmentasi
     const query = new URLSearchParams(location.search);
@@ -80,13 +97,21 @@ export default function Blast() {
     }
   }, [location]);
 
-  const loadMembers = () => {
-    try {
-      return JSON.parse(localStorage.getItem('vet_crm_members')) || [];
-    } catch (_) {
-      return [];
-    }
-  };
+  // Fetch segment members whenever the selected segment key changes
+  useEffect(() => {
+    if (recipientType !== 'Segment') return;
+    const fetchSegmentMembers = async () => {
+      try {
+        const [category, val] = selectedSegmentKey.split(':');
+        if (!category || !val) { setSegmentMembers([]); return; }
+        const data = await pipelineService.getMembersBySegment(category, val);
+        setSegmentMembers(data || []);
+      } catch (err) {
+        setSegmentMembers([]);
+      }
+    };
+    fetchSegmentMembers();
+  }, [recipientType, selectedSegmentKey]);
 
   const handleSelectAllManual = (e) => {
     if (e.target.checked) {
@@ -107,9 +132,7 @@ export default function Blast() {
       return members;
     }
     if (recipientType === 'Segment') {
-      const [category, val] = selectedSegmentKey.split(':');
-      if (!category || !val) return [];
-      return crmState.getMembersBySegment(category, val);
+      return segmentMembers;
     }
     if (recipientType === 'Manual') {
       return members.filter(m => manualSelectedIds.includes(m.id));
@@ -129,7 +152,7 @@ export default function Blast() {
     }
   };
 
-  const handleSendBlast = () => {
+  const handleSendBlast = async () => {
     const list = getTargetRecipients();
     if (list.length === 0) return;
 
@@ -143,19 +166,18 @@ export default function Blast() {
         if (prev >= 100) {
           clearInterval(interval);
           
-          // Save to history in crmState
-          const newHistory = crmState.saveBlastHistory({
+          // Save to history via blastService
+          blastService.save({
             type: channelType,
             recipientCount: list.length,
             message: channelType === 'Email' ? `Subject: ${subjectText}\n\n${messageText}` : messageText
-          });
-          setBlastHistory(newHistory);
-          
+          }).then(async () => {
+            const history = await blastService.getHistory();
+            setBlastHistory(history || []);
+          }).catch(err => console.error('Gagal menyimpan riwayat blast:', err));
+
           setIsSending(false);
           setSendSuccess(true);
-          
-          // Notify other components
-          window.dispatchEvent(new Event('storage'));
 
           return 100;
         }

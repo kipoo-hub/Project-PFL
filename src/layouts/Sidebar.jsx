@@ -7,10 +7,11 @@ import {
   Bell, Kanban, ClipboardList, UserPlus, Layers, Send,
   Ticket, Zap, ListOrdered
 } from 'lucide-react';
-import { crmState } from '../lib/crmState';
+import { vaccineService, ticketService, slaService } from '../lib/supabaseService';
 
 const mainNavItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/admin/members', label: 'Kelola Member', icon: Users },
   { path: '/pasien', label: 'Pasien', icon: Users },
   { path: '/jadwal', label: 'Jadwal Temu', icon: CalendarDays },
   { path: '/reminder', label: 'Reminder Vaksin', icon: Bell },
@@ -82,7 +83,7 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
 
   const [user, setUser] = useState(() => {
     // 1. Ambil data dari localStorage
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem('adminUser');
     
     // 2. Cek apakah ada data yang tersimpan
     if (savedUser) {
@@ -100,36 +101,38 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const [ticketBadgeCount, setTicketBadgeCount] = useState(0);
   const [slaBadgeCount, setSlaBadgeCount] = useState(0);
 
+  const loadBadges = async () => {
+    try {
+      const vaccines = await vaccineService.getAll();
+      setBadgeCount(vaccines.filter(v => v.status === 'Belum Diingatkan').length);
+
+      const tickets = await ticketService.getAll();
+      setTicketBadgeCount(tickets.filter(t => t.status === 'Baru').length);
+
+      const sla = await slaService.getAll();
+      setSlaBadgeCount(sla.stats.violationsCount || 0);
+    } catch (err) {
+      console.error('Failed to load Sidebar badge counts:', err);
+    }
+  };
+
   useEffect(() => {
-    const stored = localStorage.getItem('user');
+    const stored = localStorage.getItem('adminUser');
     if (stored) setUser(JSON.parse(stored));
 
-    // Initial badge counts
-    crmState.init();
-    
-    const vaccines = crmState.getVaccines();
-    setBadgeCount(vaccines.filter(v => v.status === 'Belum Diingatkan').length);
+    loadBadges();
 
-    const tickets = crmState.getTickets();
-    setTicketBadgeCount(tickets.filter(t => t.status === 'Baru').length);
-
-    const sla = crmState.getSLAData();
-    setSlaBadgeCount(sla.stats.violationsCount);
-
-    // Sync on storage event
-    const handleStorage = () => {
-      const updatedVac = crmState.getVaccines();
-      setBadgeCount(updatedVac.filter(v => v.status === 'Belum Diingatkan').length);
-
-      const updatedTkt = crmState.getTickets();
-      setTicketBadgeCount(updatedTkt.filter(t => t.status === 'Baru').length);
-
-      const updatedSla = crmState.getSLAData();
-      setSlaBadgeCount(updatedSla.stats.violationsCount);
+    // Sync on storage and crm_change events
+    const handleUpdate = () => {
+      loadBadges();
     };
     
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('crm_change', handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('crm_change', handleUpdate);
+    };
   }, []);
 
   const isActive = (item) =>
@@ -144,8 +147,8 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const handleLogout = () => {
     const isConfirm = window.confirm('Apakah Anda yakin ingin keluar?');
     if (isConfirm) {
-      localStorage.removeItem('user'); // Hapus data login
-      navigate('/login');              // Pindah ke halaman login
+      localStorage.removeItem('adminUser'); // Hapus data login
+      navigate('/admin/login');              // Pindah ke halaman login
     }
   };
 

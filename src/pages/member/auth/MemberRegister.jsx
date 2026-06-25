@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../../../context/MemberAuthContext';
 import './member-auth.css';
+import { supabase } from '../../../lib/supabase';
 
 const LogoSVG = () => (
   <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
@@ -75,19 +76,74 @@ export default function MemberRegister() {
     return errs;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
     setLoading(true);
-    setTimeout(() => {
-      register({ name: form.name, email: form.email, phone: form.phone });
+    try {
+      // 1. Check if email exists
+      const { data: existing, error: checkError } = await supabase
+        .from('members')
+        .select('id')
+        .eq('email', form.email);
+        
+      if (existing && existing.length > 0) {
+        setErrors({ email: 'Email sudah terdaftar' });
+        setLoading(false);
+        return;
+      }
+
+      // 2. Insert into members table
+      const { data: newMember, error: insertError } = await supabase
+        .from('members')
+        .insert([{
+          name: form.name,
+          email: form.email,
+          password: form.password,
+        }])
+        .select()
+        .single();
+
+      if (insertError || !newMember) {
+        setErrors({ auth: 'Gagal membuat akun member' });
+        setLoading(false);
+        return;
+      }
+
+      // 3. Auto-insert to pipeline_members table for CRM pipeline
+      await supabase
+        .from('pipeline_members')
+        .insert([{
+          member_id: newMember.id,
+          name: newMember.name,
+          email: newMember.email,
+          phone: form.phone,
+          stage: 'BARU',
+          visits: 0,
+          total_transaksi: 0,
+          pets: [],
+        }]);
+
+      // 4. Log in the user in our AuthContext
+      register({
+        id: newMember.id,
+        name: newMember.name,
+        email: newMember.email,
+        role: 'member',
+        created_at: newMember.created_at
+      });
+
       setSuccess(`Selamat datang, ${form.name.split(' ')[0]}! Akun member kamu berhasil dibuat.`);
+      setTimeout(() => navigate('/dashboard'), 1800);
+    } catch (err) {
+      console.error(err);
+      setErrors({ auth: 'Terjadi kesalahan sistem' });
+    } finally {
       setLoading(false);
-      setTimeout(() => navigate('/member/dashboard'), 1800);
-    }, 1200);
+    }
   };
 
   const EyeIcon = ({ show }) => (
@@ -185,6 +241,11 @@ export default function MemberRegister() {
           )}
 
           <form id="member-register-form" onSubmit={handleSubmit} noValidate>
+            {errors.auth && (
+              <div className="mauth-field__error" style={{ marginBottom: 16 }}>
+                ⚠ {errors.auth}
+              </div>
+            )}
             {/* Nama */}
             <div className="mauth-field">
               <label htmlFor="reg-name">Nama Lengkap</label>

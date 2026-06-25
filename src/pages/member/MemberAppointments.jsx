@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useMemberAuth } from '../../context/MemberAuthContext';
-import { crmState } from '../../lib/crmState';
+import { jadwalService, pasienService } from '../../lib/supabaseService';
 
 const SERVICES = [
   { id: 'srv1', title: 'Konsultasi Dokter Hewan', desc: 'Pemeriksaan kesehatan, diagnosis, dan resep obat.', icon: '🩺', cost: 'Rp 75.000' },
@@ -21,11 +21,17 @@ const DOCTORS = [
 const TIME_SLOTS = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00'];
 
 export default function MemberAppointments() {
-  const { member } = useMemberAuth();
+  const { member: authMember } = useMemberAuth();
   const location = useLocation();
+
+  const member = (() => {
+    try { return JSON.parse(localStorage.getItem('memberUser')); } catch { return authMember; }
+  })() || authMember;
 
   const [appointments, setAppointments] = useState([]);
   const [pets, setPets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('upcoming');
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [step, setStep] = useState(1);
@@ -38,16 +44,24 @@ export default function MemberAppointments() {
   const [selectedTime, setSelectedTime] = useState('');
   const [notes, setNotes] = useState('');
 
-  const loadAppointments = () => {
-    crmState.init();
-    const email = member?.email || 'demo@email.com';
-    const appts = crmState.getMemberAppointments(email);
-    setAppointments(appts);
-
-    const memberPets = crmState.getMemberPets(email);
-    setPets(memberPets);
-    if (memberPets.length > 0 && !selectedPet) {
-      setSelectedPet(memberPets[0].nama);
+  const loadAppointments = async () => {
+    if (!member?.id) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const [appts, memberPets] = await Promise.all([
+        jadwalService.getByMemberId(member.id),
+        pasienService.getByMemberId(member.id)
+      ]);
+      setAppointments(appts || []);
+      setPets(memberPets || []);
+      if (memberPets?.length > 0 && !selectedPet) {
+        setSelectedPet(memberPets[0].nama);
+      }
+    } catch (err) {
+      setError('Gagal memuat data janji temu.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,17 +77,11 @@ export default function MemberAppointments() {
       // Clear location state
       window.history.replaceState({}, document.title);
     }
+  }, [member?.id, location.state]);
 
-    const handleUpdate = () => {
-      loadAppointments();
-    };
-    window.addEventListener('crm_change', handleUpdate);
-    return () => window.removeEventListener('crm_change', handleUpdate);
-  }, [member, location.state]);
-
-  const handleCancel = (id) => {
+  const handleCancel = async (id) => {
     if (window.confirm('Apakah Anda yakin ingin membatalkan janji temu ini?')) {
-      crmState.cancelAppointment(id);
+      await jadwalService.cancel(id);
       loadAppointments();
     }
   };
@@ -121,10 +129,8 @@ export default function MemberAppointments() {
     setStep(prev => prev - 1);
   };
 
-  const handleConfirmBooking = () => {
-    const email = member?.email || 'demo@email.com';
+  const handleConfirmBooking = async () => {
     const apptData = {
-      memberId: email,
       petName: selectedPet,
       service: selectedService.title,
       doctor: selectedDoctor.name,
@@ -133,7 +139,7 @@ export default function MemberAppointments() {
       notes: notes
     };
 
-    crmState.createAppointment(apptData);
+    await jadwalService.create({ ...apptData, memberId: member.id });
     setIsWizardOpen(false);
     loadAppointments();
   };
@@ -149,6 +155,9 @@ export default function MemberAppointments() {
     if (status === 'Selesai') return 'bg-slate-100 text-slate-800 border-slate-200';
     return 'bg-rose-100 text-rose-800 border-rose-200'; // Dibatalkan
   };
+
+  if (loading) return <div className="p-8 text-center text-slate-400 text-sm">Memuat data...</div>;
+  if (error) return <div className="p-8 text-center text-rose-500 text-sm">{error}</div>;
 
   return (
     <div className="pb-10">

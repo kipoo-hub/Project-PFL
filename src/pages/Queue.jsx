@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
-import { crmState } from '../lib/crmState';
+import { queueService } from '../lib/supabaseService';
+import { supabase } from '../lib/supabase';
 import { 
   Users, CheckCircle2, UserPlus, Play, Check, 
   Trash2, Monitor, AlertCircle, XCircle
@@ -19,6 +20,8 @@ const cardStyle = {
 
 export default function Queue() {
   const [queues, setQueues] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newWalkIn, setNewWalkIn] = useState({
     ownerName: '',
@@ -27,55 +30,63 @@ export default function Queue() {
   });
 
   useEffect(() => {
-    crmState.init();
     loadQueues();
 
-    const handleStorage = () => {
-      loadQueues();
+    // Subscribe to real-time changes
+    const channel = queueService.subscribeToChanges((updatedQueues) => {
+      setQueues(updatedQueues);
+    });
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
     };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  const loadQueues = () => {
-    setQueues(crmState.getQueue());
+  const loadQueues = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const list = await queueService.getAll();
+      setQueues(list);
+    } catch (err) {
+      setError('Gagal memuat data antrian.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdateStatus = (id, newStatus) => {
-    const updated = crmState.updateQueueStatus(id, newStatus);
-    setQueues(updated);
-    
-    // Broadcast storage event to sync with fullscreen display tab
-    window.dispatchEvent(new Event('storage'));
+  const handleUpdateStatus = async (id, newStatus) => {
+    try {
+      await queueService.updateStatus(id, newStatus);
+      await loadQueues();
+    } catch (err) {
+      console.error('Gagal update status antrian:', err);
+    }
   };
 
-  const handleAddWalkIn = (e) => {
+  const handleAddWalkIn = async (e) => {
     e.preventDefault();
     if (!newWalkIn.ownerName || !newWalkIn.petName) return;
 
-    crmState.addQueue({
-      ownerName: newWalkIn.ownerName,
-      petName: newWalkIn.petName,
-      service: newWalkIn.service,
-      type: 'Datang Sekarang'
-    });
+    try {
+      await queueService.add({
+        ownerName: newWalkIn.ownerName,
+        petName: newWalkIn.petName,
+        service: newWalkIn.service,
+        type: 'Datang Sekarang'
+      });
 
-    setIsModalOpen(false);
-    setNewWalkIn({
-      ownerName: '',
-      petName: '',
-      service: 'Konsultasi Dokter'
-    });
-    
-    loadQueues();
-    window.dispatchEvent(new Event('storage'));
-  };
+      setIsModalOpen(false);
+      setNewWalkIn({
+        ownerName: '',
+        petName: '',
+        service: 'Konsultasi Dokter'
+      });
 
-  const handleResetQueue = () => {
-    if (window.confirm('Apakah Anda yakin ingin me-reset antrian hari ini? Semua nomor akan dihapus.')) {
-      const updated = crmState.resetQueue();
-      setQueues(updated);
-      window.dispatchEvent(new Event('storage'));
+      await loadQueues();
+    } catch (err) {
+      console.error('Gagal menambah antrian walk-in:', err);
     }
   };
 
@@ -207,96 +218,106 @@ export default function Queue() {
             Daftar Antrian Hari Ini ({queues.length})
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#fafafa', borderBottom: '1px solid var(--border-color)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                  {['Nomor', 'Member & Hewan', 'Layanan', 'Jam Daftar', 'Status', 'Tipe', 'Aksi'].map(col => (
-                    <th key={col} style={{ padding: '12px 18px' }}>{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {queues.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
-                      <AlertCircle size={32} style={{ margin: '0 auto 8px', opacity: 0.3 }} />
-                      <p style={{ fontSize: 13 }}>Belum ada antrian terdaftar hari ini.</p>
-                    </td>
+            {loading ? (
+              <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                Memuat data...
+              </div>
+            ) : error ? (
+              <div style={{ padding: 48, textAlign: 'center', color: '#e03131', fontSize: 13 }}>
+                {error}
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#fafafa', borderBottom: '1px solid var(--border-color)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                    {['Nomor', 'Member & Hewan', 'Layanan', 'Jam Daftar', 'Status', 'Tipe', 'Aksi'].map(col => (
+                      <th key={col} style={{ padding: '12px 18px' }}>{col}</th>
+                    ))}
                   </tr>
-                ) : (
-                  queues.map((q, idx) => (
-                    <tr key={q.id} style={{ borderBottom: idx < queues.length - 1 ? '1px solid var(--border-color)' : 'none', fontSize: 12.5 }}>
-                      <td style={{ padding: '14px 18px', fontWeight: 850, color: 'var(--accent-blue)', fontSize: 14 }}>{q.queueNumber}</td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ fontWeight: 650 }}>{q.ownerName}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Pet: {q.petName}</div>
-                      </td>
-                      <td style={{ padding: '14px 18px', color: '#475569', fontWeight: 500 }}>{q.service}</td>
-                      <td style={{ padding: '14px 18px', color: 'var(--text-muted)' }}>{q.registeredTime}</td>
-                      <td style={{ padding: '14px 18px' }}>{getStatusBadge(q.status)}</td>
-                      <td style={{ padding: '14px 18px', fontSize: 11 }}>
-                        <span style={{
-                          padding: '2px 6px',
-                          borderRadius: 4,
-                          background: q.type === 'Jadwalkan' ? '#f3f0ff' : '#f8fafc',
-                          color: q.type === 'Jadwalkan' ? '#7048e8' : '#64748b',
-                          border: q.type === 'Jadwalkan' ? '1px solid #d0bfff' : '1px solid #e2e8f0'
-                        }}>
-                          {q.type === 'Jadwalkan' ? `📅 Booking (${q.appointmentTime})` : '🚶 Walk-in'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          {q.status === 'Menunggu' && (
-                            <>
-                              <button
-                                onClick={() => handleUpdateStatus(q.id, 'Dipanggil')}
-                                style={{ padding: '4px 8px', borderRadius: 4, border: 'none', background: '#e03131', color: 'white', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                              >
-                                Panggil
-                              </button>
-                              <button
-                                onClick={() => handleUpdateStatus(q.id, 'Batal')}
-                                style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid var(--border-color)', background: 'white', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer' }}
-                              >
-                                Lewati
-                              </button>
-                            </>
-                          )}
-                          {q.status === 'Dipanggil' && (
-                            <>
-                              <button
-                                onClick={() => handleUpdateStatus(q.id, 'Dilayani')}
-                                style={{ padding: '4px 8px', borderRadius: 4, border: 'none', background: 'var(--accent-blue)', color: 'white', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                              >
-                                Layani
-                              </button>
-                              <button
-                                onClick={() => handleUpdateStatus(q.id, 'Dipanggil')} // Toggles storage event to blink on display screen
-                                style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ffa8a8', background: '#fff5f5', color: '#e03131', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                              >
-                                Panggil Ulang
-                              </button>
-                            </>
-                          )}
-                          {q.status === 'Dilayani' && (
-                            <button
-                              onClick={() => handleUpdateStatus(q.id, 'Selesai')}
-                              style={{ padding: '4px 8px', borderRadius: 4, border: 'none', background: 'var(--accent-teal)', color: 'white', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2 }}
-                            >
-                              <Check size={11} /> Selesai
-                            </button>
-                          )}
-                          {(q.status === 'Selesai' || q.status === 'Batal') && (
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>Tidak ada aksi</span>
-                          )}
-                        </div>
+                </thead>
+                <tbody>
+                  {queues.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <AlertCircle size={32} style={{ margin: '0 auto 8px', opacity: 0.3 }} />
+                        <p style={{ fontSize: 13 }}>Belum ada antrian terdaftar hari ini.</p>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    queues.map((q, idx) => (
+                      <tr key={q.id} style={{ borderBottom: idx < queues.length - 1 ? '1px solid var(--border-color)' : 'none', fontSize: 12.5 }}>
+                        <td style={{ padding: '14px 18px', fontWeight: 850, color: 'var(--accent-blue)', fontSize: 14 }}>{q.queueNumber}</td>
+                        <td style={{ padding: '14px 18px' }}>
+                          <div style={{ fontWeight: 650 }}>{q.ownerName}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Pet: {q.petName}</div>
+                        </td>
+                        <td style={{ padding: '14px 18px', color: '#475569', fontWeight: 500 }}>{q.service}</td>
+                        <td style={{ padding: '14px 18px', color: 'var(--text-muted)' }}>{q.registeredTime}</td>
+                        <td style={{ padding: '14px 18px' }}>{getStatusBadge(q.status)}</td>
+                        <td style={{ padding: '14px 18px', fontSize: 11 }}>
+                          <span style={{
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            background: q.type === 'Jadwalkan' ? '#f3f0ff' : '#f8fafc',
+                            color: q.type === 'Jadwalkan' ? '#7048e8' : '#64748b',
+                            border: q.type === 'Jadwalkan' ? '1px solid #d0bfff' : '1px solid #e2e8f0'
+                          }}>
+                            {q.type === 'Jadwalkan' ? `📅 Booking (${q.appointmentTime})` : '🚶 Walk-in'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 18px' }}>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {q.status === 'Menunggu' && (
+                              <>
+                                <button
+                                  onClick={() => handleUpdateStatus(q.id, 'Dipanggil')}
+                                  style={{ padding: '4px 8px', borderRadius: 4, border: 'none', background: '#e03131', color: 'white', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  Panggil
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateStatus(q.id, 'Batal')}
+                                  style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid var(--border-color)', background: 'white', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer' }}
+                                >
+                                  Lewati
+                                </button>
+                              </>
+                            )}
+                            {q.status === 'Dipanggil' && (
+                              <>
+                                <button
+                                  onClick={() => handleUpdateStatus(q.id, 'Dilayani')}
+                                  style={{ padding: '4px 8px', borderRadius: 4, border: 'none', background: 'var(--accent-blue)', color: 'white', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  Layani
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateStatus(q.id, 'Dipanggil')} // Toggles storage event to blink on display screen
+                                  style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #ffa8a8', background: '#fff5f5', color: '#e03131', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  Panggil Ulang
+                                </button>
+                              </>
+                            )}
+                            {q.status === 'Dilayani' && (
+                              <button
+                                onClick={() => handleUpdateStatus(q.id, 'Selesai')}
+                                style={{ padding: '4px 8px', borderRadius: 4, border: 'none', background: 'var(--accent-teal)', color: 'white', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2 }}
+                              >
+                                <Check size={11} /> Selesai
+                              </button>
+                            )}
+                            {(q.status === 'Selesai' || q.status === 'Batal') && (
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>Tidak ada aksi</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
@@ -322,7 +343,19 @@ export default function Queue() {
           <div style={{ background: 'white', borderRadius: 12, border: '1px solid var(--border-color)', padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <h4 style={{ margin: '0 0 6px 0', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Aksi Cepat</h4>
             <button
-              onClick={handleResetQueue}
+              onClick={async () => {
+                if (window.confirm('Apakah Anda yakin ingin me-reset antrian hari ini? Semua nomor akan dihapus.')) {
+                  try {
+                    // Delete all queues one by one
+                    for (const q of queues) {
+                      await queueService.delete(q.id);
+                    }
+                    await loadQueues();
+                  } catch (err) {
+                    console.error('Gagal reset antrian:', err);
+                  }
+                }
+              }}
               style={{
                 width: '100%',
                 padding: '9px 0',

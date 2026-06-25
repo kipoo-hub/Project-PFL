@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
 // ── Storage key ──────────────────────────────────────────────
-const STORAGE_KEY = 'vet_member';
+const STORAGE_KEY = 'memberUser';
 
 // ── Initial state ─────────────────────────────────────────────
 const getInitialState = () => {
@@ -9,7 +9,12 @@ const getInitialState = () => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const member = JSON.parse(stored);
-      return { member, isLoggedIn: true };
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (member && member.id && uuidRegex.test(member.id)) {
+        return { member, isLoggedIn: true };
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
     }
   } catch (_) {}
   return { member: null, isLoggedIn: false };
@@ -72,28 +77,9 @@ export function MemberAuthProvider({ children }) {
     return member;
   };
 
-  const login = (credentials) => {
-    // Mock: accept any email/password and match to stored member
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const member = JSON.parse(stored);
-        if (member.email === credentials.email) {
-          dispatch({ type: 'LOGIN', payload: member });
-          return { success: true, member };
-        }
-      } catch (_) {}
-    }
-    // Demo fallback: create a demo member
-    const demoMember = {
-      id: `m_demo_${Date.now()}`,
-      name: 'Demo Member',
-      email: credentials.email,
-      phone: '0812-0000-0000',
-      registeredAt: new Date().toISOString(),
-    };
-    dispatch({ type: 'LOGIN', payload: demoMember });
-    return { success: true, member: demoMember };
+  const login = (memberData) => {
+    dispatch({ type: 'LOGIN', payload: memberData });
+    return { success: true, member: memberData };
   };
 
   const logout = () => dispatch({ type: 'LOGOUT' });

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 import { Search, Plus, PawPrint, X, Check } from 'lucide-react';
-import { speciesColors, initialPatients } from '../data/pasien';
+import { speciesColors } from '../data/pasien';
+import { pasienService } from '../lib/supabaseService';
 
 const StatusBadge = ({ status }) => {
   const cfg = {
@@ -58,10 +59,29 @@ const Modal = ({ show, onClose, onSave }) => {
 };
 
 const Pasien = () => {
-  const [patients, setPatients] = useState(initialPatients);
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [filterSpesies, setFilterSpesies] = useState('Semua');
   const [showModal, setShowModal] = useState(false);
+
+  const fetchPatients = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await pasienService.getAll();
+      setPatients(data || []);
+    } catch (err) {
+      setError('Gagal memuat data pasien.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPatients();
+  }, []);
 
   const filtered = patients.filter(p => {
     const matchSearch = p.nama.toLowerCase().includes(search.toLowerCase()) || p.pemilik.toLowerCase().includes(search.toLowerCase());
@@ -69,10 +89,15 @@ const Pasien = () => {
     return matchSearch && matchSpesies;
   });
 
-  const handleAddPatient = (form) => {
-    const newP = { ...form, id: `P-${String(patients.length + 1).padStart(3,'0')}`, kunjunganTerakhir: 'Baru', status: 'Aktif' };
-    setPatients(p => [newP, ...p]);
-    setShowModal(false);
+  const handleAddPatient = async (form) => {
+    try {
+      const newP = { ...form, kunjunganTerakhir: 'Baru', status: 'Aktif' };
+      await pasienService.add(newP);
+      await fetchPatients();
+      setShowModal(false);
+    } catch (err) {
+      setError('Gagal menambah pasien.');
+    }
   };
 
   return (
@@ -115,48 +140,54 @@ const Pasien = () => {
 
         {/* Table */}
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#fafafa' }}>
-                {['ID','Hewan','Spesies','Pemilik','Telepon','Kunjungan Terakhir','Status'].map(col => (
-                  <th key={col} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border-color)', whiteSpace: 'nowrap' }}>{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p, i) => {
-                const sc = speciesColors[p.spesies] || speciesColors.Lainnya;
-                return (
-                  <tr key={p.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border-color)' : 'none', transition: 'background 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#fafbff'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{p.id}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: sc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <PawPrint size={15} color={sc.color} />
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Memuat data...</div>
+          ) : error ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#F56565', fontSize: 14 }}>{error}</div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#fafafa' }}>
+                  {['ID','Hewan','Spesies','Pemilik','Telepon','Kunjungan Terakhir','Status'].map(col => (
+                    <th key={col} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border-color)', whiteSpace: 'nowrap' }}>{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((p, i) => {
+                  const sc = speciesColors[p.spesies] || speciesColors.Lainnya;
+                  return (
+                    <tr key={p.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border-color)' : 'none', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fafbff'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{p.id}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: sc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <PawPrint size={15} color={sc.color} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{p.nama}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.ras}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{p.nama}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.ras}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ padding: '3px 10px', borderRadius: 20, background: sc.bg, color: sc.color, fontSize: 11, fontWeight: 600 }}>{p.spesies}</span>
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{p.pemilik}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{p.telepon}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{p.kunjunganTerakhir}</td>
-                    <td style={{ padding: '12px 16px' }}><StatusBadge status={p.status} /></td>
-                  </tr>
-                );
-              })}
-              {filtered.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Tidak ada pasien ditemukan.</td></tr>
-              )}
-            </tbody>
-          </table>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ padding: '3px 10px', borderRadius: 20, background: sc.bg, color: sc.color, fontSize: 11, fontWeight: 600 }}>{p.spesies}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{p.pemilik}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{p.telepon}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{p.kunjunganTerakhir}</td>
+                      <td style={{ padding: '12px 16px' }}><StatusBadge status={p.status} /></td>
+                    </tr>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Tidak ada pasien ditemukan.</td></tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

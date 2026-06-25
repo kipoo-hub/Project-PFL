@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useMemberAuth } from '../../context/MemberAuthContext';
-import { crmState } from '../../lib/crmState';
+import { billService } from '../../lib/supabaseService';
 
 export default function MemberBills() {
   const { member } = useMemberAuth();
@@ -8,41 +8,43 @@ export default function MemberBills() {
   const [bills, setBills] = useState([]);
   const [activeBill, setActiveBill] = useState(null);
 
-  const loadBills = () => {
-    crmState.init();
-    const email = member?.email || 'demo@email.com';
-    const list = crmState.getMemberBills(email);
-    setBills(list);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const loadBills = async () => {
+    const memberUser = JSON.parse(localStorage.getItem('memberUser'));
+    if (!memberUser?.id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const list = await billService.getByMemberId(memberUser.id);
+      setBills(list);
+    } catch (err) {
+      setError('Gagal memuat tagihan.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadBills();
-
-    const handleUpdate = () => {
-      loadBills();
-    };
-    window.addEventListener('crm_change', handleUpdate);
-    return () => window.removeEventListener('crm_change', handleUpdate);
-  }, [member]);
+  }, []);
 
   const formatRupiah = (val) => {
     return 'Rp ' + new Intl.NumberFormat('id-ID').format(val);
   };
 
-  const handlePayInvoice = (bill) => {
+  const handlePayInvoice = async (bill) => {
     alert(`Membuka Gerbang Pembayaran untuk Invoice ${bill.invoiceNo}...\nMetode Pembayaran: QRIS / Virtual Account.\nSimulasi pembayaran sukses!`);
     
-    // Simulate updating paid status in local storage
-    crmState.init();
-    const allBills = JSON.parse(localStorage.getItem('vet_crm_bills_new') || '[]');
-    const updated = allBills.map(b => b.id === bill.id ? { ...b, status: 'Lunas' } : b);
-    localStorage.setItem('vet_crm_bills_new', JSON.stringify(updated));
-    window.dispatchEvent(new Event('crm_change'));
-    
-    // Refresh modal if open
-    const updatedBill = updated.find(b => b.id === bill.id);
-    if (updatedBill) {
-      setActiveBill(updatedBill);
+    try {
+      await billService.updateStatus(bill.id, 'Lunas');
+      // Refresh bill list
+      await loadBills();
+      // Update modal if open
+      setActiveBill(prev => prev?.id === bill.id ? { ...prev, status: 'Lunas' } : prev);
+    } catch (err) {
+      setError('Gagal memperbarui status pembayaran.');
     }
   };
 
@@ -51,6 +53,9 @@ export default function MemberBills() {
   const paidCount = bills.filter(b => b.status === 'Lunas').length;
   const unpaidCount = bills.filter(b => b.status === 'Belum Dibayar').length;
   const unpaidSum = bills.filter(b => b.status === 'Belum Dibayar').reduce((sum, b) => sum + b.amount, 0);
+
+  if (loading) return <div className="p-8 text-center text-slate-400">Memuat data...</div>;
+  if (error) return <div className="p-8 text-center text-rose-500">{error}</div>;
 
   return (
     <div className="pb-10">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useMemberAuth } from '../../context/MemberAuthContext';
-import { crmState } from '../../lib/crmState';
+import { medicalRecordService } from '../../lib/supabaseService';
 
 export default function MemberMedicalRecords() {
   const { member } = useMemberAuth();
@@ -16,33 +16,38 @@ export default function MemberMedicalRecords() {
   // Modal Detail
   const [activeRecord, setActiveRecord] = useState(null);
 
-  const loadMedicalRecords = () => {
-    crmState.init();
-    const email = member?.email || 'demo@email.com';
-    const list = crmState.getMemberMedicalRecords(email);
-    setRecords(list);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-    // Extract unique pets
-    const uniquePets = Array.from(new Set(list.map(r => r.petName))).filter(Boolean);
-    setPets(uniquePets);
+  const loadMedicalRecords = async () => {
+    const memberUser = JSON.parse(localStorage.getItem('memberUser'));
+    if (!memberUser?.id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const list = await medicalRecordService.getByMemberId(memberUser.id);
+      setRecords(list);
 
-    // Extract unique years
-    const uniqueYears = Array.from(new Set(list.map(r => {
-      if (!r.date) return null;
-      return r.date.split('-')[0];
-    }))).filter(Boolean).sort((a, b) => b - a);
-    setYears(uniqueYears);
+      // Extract unique pets
+      const uniquePets = Array.from(new Set(list.map(r => r.petName))).filter(Boolean);
+      setPets(uniquePets);
+
+      // Extract unique years
+      const uniqueYears = Array.from(new Set(list.map(r => {
+        if (!r.date) return null;
+        return r.date.split('-')[0];
+      }))).filter(Boolean).sort((a, b) => b - a);
+      setYears(uniqueYears);
+    } catch (err) {
+      setError('Gagal memuat rekam medis.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadMedicalRecords();
-
-    const handleUpdate = () => {
-      loadMedicalRecords();
-    };
-    window.addEventListener('crm_change', handleUpdate);
-    return () => window.removeEventListener('crm_change', handleUpdate);
-  }, [member]);
+  }, []);
 
   // Filtering
   const filteredRecords = records.filter(r => {
@@ -54,6 +59,9 @@ export default function MemberMedicalRecords() {
   const handleDownloadPDF = (record) => {
     alert(`Mengunduh Rekam Medis PDF untuk ${record.petName} (ID: ${record.id})...\nSimulasi unduhan berhasil diselesaikan.`);
   };
+
+  if (loading) return <div className="p-8 text-center text-slate-400">Memuat data...</div>;
+  if (error) return <div className="p-8 text-center text-rose-500">{error}</div>;
 
   return (
     <div className="pb-10">
