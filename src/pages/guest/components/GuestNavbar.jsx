@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useMemberAuth } from '../../../context/MemberAuthContext';
+import { supabase } from '../../../lib/supabase';
 
 export default function GuestNavbar() {
+  const { member, isLoggedIn, logout } = useMemberAuth();
   const [scrolled, setScrolled] = useState(false);
   const [visible, setVisible] = useState(true);
   const [activeSection, setActiveSection] = useState('beranda');
@@ -111,20 +114,65 @@ export default function GuestNavbar() {
 
         {/* CTA Buttons */}
         <div className="guest-navbar__actions">
-          <button
-            id="navbar-daftar-btn"
-            className="guest-btn guest-btn--outline-green"
-            onClick={() => navigate('/member/register')}
-          >
-            Daftar Gratis
-          </button>
-          <button
-            id="navbar-cta-btn"
-            className="guest-btn guest-btn--primary"
-            onClick={() => handleScrollTo('kontak')}
-          >
-            Buat Janji
-          </button>
+          {isLoggedIn ? (
+            <>
+              <button
+                id="navbar-membership-btn"
+                className="guest-btn guest-btn--outline-green"
+                onClick={() => navigate('/member/membership')}
+              >
+                🏆 Membership
+              </button>
+              <button
+                id="navbar-dashboard-btn"
+                className="guest-btn guest-btn--outline"
+                onClick={async () => {
+                  try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) { navigate('/member'); return; }
+                    const { data: profile } = await supabase
+                      .from('profiles')
+                      .select('role')
+                      .eq('user_id', session.user.id)
+                      .single();
+                    if (profile?.role === 'admin') navigate('/dashboard');
+                    else navigate('/member');
+                  } catch {
+                    // fallback ke context
+                    if (member?.role === 'admin') navigate('/dashboard');
+                    else navigate('/member');
+                  }
+                }}
+              >
+                Dashboard
+              </button>
+              <button
+                id="navbar-logout-btn"
+                className="guest-btn guest-btn--outline"
+                onClick={() => { logout(); navigate('/'); }}
+                style={{ color: '#e03131', borderColor: '#fecaca' }}
+              >
+                Keluar
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                id="navbar-daftar-btn"
+                className="guest-btn guest-btn--outline-green"
+                onClick={() => navigate('/register')}
+              >
+                Daftar Gratis
+              </button>
+              <button
+                id="navbar-masuk-btn"
+                className="guest-btn guest-btn--primary"
+                onClick={() => navigate('/login')}
+              >
+                Masuk
+              </button>
+            </>
+          )}
           {/* Hamburger */}
           <button
             className="guest-navbar__hamburger"
@@ -156,18 +204,60 @@ export default function GuestNavbar() {
             {item.label}
           </button>
         ))}
-        <button
-          className="guest-btn guest-btn--outline-green guest-navbar__mobile-cta"
-          onClick={() => { setMobileOpen(false); navigate('/member/register'); }}
-        >
-          Daftar Gratis
-        </button>
-        <button
-          className="guest-btn guest-btn--primary guest-navbar__mobile-cta"
-          onClick={() => handleScrollTo('kontak')}
-        >
-          Buat Janji
-        </button>
+        {isLoggedIn ? (
+          <>
+            <button
+              className="guest-btn guest-btn--outline-green guest-navbar__mobile-cta"
+              onClick={() => { setMobileOpen(false); navigate('/member/membership'); }}
+            >
+              🏆 Membership
+            </button>
+            <button
+              className="guest-btn guest-btn--outline guest-navbar__mobile-cta"
+              onClick={async () => {
+                setMobileOpen(false);
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session) { navigate('/member'); return; }
+                  const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('user_id', session.user.id)
+                    .single();
+                  if (profile?.role === 'admin') navigate('/dashboard');
+                  else navigate('/member');
+                } catch {
+                  if (member?.role === 'admin') navigate('/dashboard');
+                  else navigate('/member');
+                }
+              }}
+            >
+              Dashboard
+            </button>
+            <button
+              className="guest-btn guest-btn--outline guest-navbar__mobile-cta"
+              onClick={() => { setMobileOpen(false); logout(); navigate('/'); }}
+              style={{ color: '#e03131', borderColor: '#fecaca' }}
+            >
+              Keluar
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className="guest-btn guest-btn--outline-green guest-navbar__mobile-cta"
+              onClick={() => { setMobileOpen(false); navigate('/register'); }}
+            >
+              Daftar Gratis
+            </button>
+            <button
+              className="guest-btn guest-btn--primary guest-navbar__mobile-cta"
+              onClick={() => { setMobileOpen(false); navigate('/login'); }}
+            >
+              Masuk
+            </button>
+          </>
+        )}
       </div>
     </nav>
   );

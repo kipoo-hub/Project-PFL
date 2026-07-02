@@ -2,40 +2,62 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CalendarDays, BarChart3, 
-  Settings, PawPrint, Component, Megaphone, 
-  Briefcase, HeadphonesIcon, ChevronRight, LogOut,
-  Bell, Kanban, ClipboardList, UserPlus, Layers, Send,
-  Ticket, Zap, ListOrdered
+  Settings, PawPrint, Component, ChevronRight, LogOut,
+  Bell, ClipboardList, Layers, Send,
+  Ticket, Zap, ListOrdered, ChevronDown,
+  Wrench, DollarSign, Megaphone, UserCheck,
 } from 'lucide-react';
 import { vaccineService, ticketService, slaService } from '../lib/supabaseService';
 import { useMemberAuth } from '../context/MemberAuthContext';
 
+// ── CRM Pilar Configuration ─────────────────────────────────────────────────
+const CRM_PILLARS = {
+  service: {
+    label: 'Service Automation',
+    icon: Wrench,
+    color: '#3b5bdb',
+    bgColor: '#eef2ff',
+    items: [
+      { path: '/service', label: 'Case Management', icon: Wrench },
+      { path: '/jadwal', label: 'Jadwal Temu', icon: CalendarDays },
+      { path: '/antrian', label: 'Antrian Digital', icon: ListOrdered },
+      { path: '/tiket', label: 'Tiket Keluhan', icon: Ticket },
+      { path: '/sla', label: 'SLA Monitor', icon: Zap },
+    ],
+  },
+  sales: {
+    label: 'Sales Automation',
+    icon: DollarSign,
+    color: '#0ca678',
+    bgColor: '#e6fcf5',
+    items: [
+      { path: '/sales', label: 'Sales Pipeline', icon: DollarSign },
+      { path: '/pipeline', label: 'Pipeline Member', icon: UserCheck },
+      { path: '/followup', label: 'Follow-up Kunjungan', icon: ClipboardList },
+      { path: '/leads', label: 'Lead Management', icon: UserCheck },
+    ],
+  },
+  marketing: {
+    label: 'Marketing Automation',
+    icon: Megaphone,
+    color: '#f76707',
+    bgColor: '#fff4e6',
+    items: [
+      { path: '/marketing', label: 'Campaign Management', icon: Megaphone },
+      { path: '/segmentasi', label: 'Segmentasi Member', icon: Layers },
+      { path: '/blast', label: 'Pesan Massal', icon: Send },
+      { path: '/reminder', label: 'Reminder Vaksin', icon: Bell },
+    ],
+  },
+};
+
 const mainNavItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/admin/members', label: 'Kelola Member', icon: Users },
   { path: '/pasien', label: 'Pasien', icon: Users },
-  { path: '/jadwal', label: 'Jadwal Temu', icon: CalendarDays },
-  { path: '/reminder', label: 'Reminder Vaksin', icon: Bell },
+  { path: '/admin/members', label: 'Kelola Member', icon: Users },
   { path: '/analitik', label: 'Analitik', icon: BarChart3 },
   { path: '/pengaturan', label: 'Pengaturan', icon: Settings },
   { path: '/components', label: 'Components', icon: Component },
-];
-
-const crmNavItems = [
-  { path: '/marketing', label: 'Marketing', icon: Megaphone },
-  { path: '/sales', label: 'Sales', icon: Briefcase },
-  { path: '/service', label: 'Layanan', icon: HeadphonesIcon },
-  { path: '/pipeline', label: 'Pipeline Member', icon: Kanban },
-  { path: '/followup', label: 'Follow-up Kunjungan', icon: ClipboardList },
-  { path: '/leads', label: 'Lead Management', icon: UserPlus },
-  { path: '/segmentasi', label: 'Segmentasi Member', icon: Layers },
-  { path: '/blast', label: 'Pesan Massal', icon: Send },
-  { path: '/tiket', label: 'Tiket Keluhan', icon: Ticket },
-  { path: '/sla', label: 'SLA Monitor', icon: Zap },
-];
-
-const otherNavItems = [
-  { path: '/antrian', label: 'Antrian Digital', icon: ListOrdered }
 ];
 
 function NavItem({ item, isActive, badge, badgeColor, isCollapsed }) {
@@ -89,6 +111,7 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
     initials: 'A'
   };
   
+  const [expandedPillar, setExpandedPillar] = useState(null);
   const [badgeCount, setBadgeCount] = useState(0);
   const [ticketBadgeCount, setTicketBadgeCount] = useState(0);
   const [slaBadgeCount, setSlaBadgeCount] = useState(0);
@@ -108,6 +131,17 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
     }
   };
 
+  // Determine which pillar should be expanded based on current path
+  useEffect(() => {
+    const path = location.pathname;
+    for (const [key, pillar] of Object.entries(CRM_PILLARS)) {
+      if (pillar.items.some(item => path.startsWith(item.path))) {
+        setExpandedPillar(key);
+        break;
+      }
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     loadBadges();
 
@@ -123,6 +157,13 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
       window.removeEventListener('crm_change', handleUpdate);
     };
   }, []);
+
+  const togglePillar = (key) => {
+    setExpandedPillar(expandedPillar === key ? null : key);
+  };
+
+  const isPillarActive = (items) =>
+    items.some(item => location.pathname.startsWith(item.path));
 
   const isActive = (item) =>
     item.path === '/dashboard'
@@ -175,68 +216,129 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
         </div>
 
         {/* ── Navigation List ── */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden py-2 space-y-4">
-          {/* Main Group */}
-          <div>
-            {!isCollapsed && (
-              <div className="px-5 mb-2 mt-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#A0AEC0]">
-                Overview
-              </div>
-            )}
-            <div className="flex flex-col gap-0.5">
-              {mainNavItems.map((item) => (
-                <NavItem 
-                  key={item.path} 
-                  item={item} 
-                  isActive={isActive(item)} 
-                  badge={item.path === '/reminder' ? badgeCount : undefined}
-                  isCollapsed={isCollapsed}
-                />
-              ))}
-            </div>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden py-2 space-y-2">
+          {/* Dashboard */}
+          <div className="flex flex-col gap-0.5 px-3">
+            <NavItem 
+              item={{ path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }} 
+              isActive={isActive({ path: '/dashboard' })} 
+              isCollapsed={isCollapsed}
+            />
           </div>
 
-          {/* CRM Group */}
+          {/* CRM Pillars */}
           <div>
             {!isCollapsed && (
-              <div className="px-5 mb-2 mt-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#A0AEC0]">
-                CRM
+              <div className="px-5 mb-1 mt-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[#A0AEC0]">
+                CRM Platform
               </div>
             )}
             <div className="flex flex-col gap-0.5">
-              {crmNavItems.map((item) => {
-                let badge = undefined;
-                let badgeColor = undefined;
-                if (item.path === '/tiket') {
-                  badge = ticketBadgeCount;
-                  badgeColor = 'bg-[#F56565]';
-                } else if (item.path === '/sla') {
-                  badge = slaBadgeCount;
-                  badgeColor = 'bg-[#ED8936]';
+              {Object.entries(CRM_PILLARS).map(([key, pillar]) => {
+                const Icon = pillar.icon;
+                const isExpanded = expandedPillar === key;
+                const active = isPillarActive(pillar.items);
+
+                if (isCollapsed) {
+                  // Collapsed: show first-level items only
+                  return (
+                    <div key={key} className="px-3">
+                      <div className="w-full flex items-center h-10 gap-3 px-3 rounded-lg text-sm font-medium transition-all duration-200"
+                        style={{ color: active ? pillar.color : '#64748b', background: active ? pillar.bgColor : 'transparent' }}
+                        title={pillar.label}
+                      >
+                        <Icon size={17} strokeWidth={active ? 2.2 : 1.8} style={{ color: active ? pillar.color : '#94a3b8' }} />
+                      </div>
+                    </div>
+                  );
                 }
+
                 return (
-                  <NavItem 
-                    key={item.path} 
-                    item={item} 
-                    isActive={isActive(item)} 
-                    badge={badge}
-                    badgeColor={badgeColor}
-                    isCollapsed={isCollapsed}
-                  />
+                  <div key={key} className="px-3">
+                    {/* Pillar Header */}
+                    <button
+                      onClick={() => togglePillar(key)}
+                      className="w-full flex items-center h-10 gap-3 px-3 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer outline-none"
+                      style={{
+                        color: active ? pillar.color : '#475569',
+                        background: active ? pillar.bgColor : 'transparent',
+                      }}
+                      onMouseEnter={e => !active && (e.currentTarget.style.background = '#F8F9FA')}
+                      onMouseLeave={e => !active && (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <Icon size={17} strokeWidth={active ? 2.2 : 1.8} style={{ color: active ? pillar.color : '#94a3b8' }} />
+                      <span className="flex-1 text-left truncate" style={{ fontWeight: active ? 700 : 500 }}>{pillar.label}</span>
+                      <ChevronDown
+                        size={14}
+                        className="transition-transform duration-200"
+                        style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', color: '#94a3b8' }}
+                      />
+                    </button>
+
+                    {/* Sub-items */}
+                    <div className="overflow-hidden transition-all duration-200" style={{
+                      maxHeight: isExpanded ? '500px' : '0',
+                      opacity: isExpanded ? 1 : 0,
+                    }}>
+                      <div className="flex flex-col gap-0.5 ml-3 mt-0.5 border-l-2 pl-2" style={{ borderColor: pillar.color + '30' }}>
+                        {pillar.items.map((item) => {
+                          let badge = undefined;
+                          let badgeColor = undefined;
+                          if (item.path === '/tiket') {
+                            badge = ticketBadgeCount;
+                            badgeColor = 'bg-[#F56565]';
+                          } else if (item.path === '/sla') {
+                            badge = slaBadgeCount;
+                            badgeColor = 'bg-[#ED8936]';
+                          } else if (item.path === '/reminder') {
+                            badge = badgeCount;
+                          }
+                          return (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              className="relative flex items-center h-9 gap-3 px-3 rounded-lg text-sm font-medium transition-all duration-200 w-full"
+                              style={{
+                                color: location.pathname.startsWith(item.path) ? pillar.color : '#64748b',
+                                background: location.pathname.startsWith(item.path) ? pillar.bgColor : 'transparent',
+                                textDecoration: 'none',
+                              }}
+                              onMouseEnter={e => {
+                                if (!location.pathname.startsWith(item.path))
+                                  e.currentTarget.style.background = '#F8F9FA';
+                              }}
+                              onMouseLeave={e => {
+                                if (!location.pathname.startsWith(item.path))
+                                  e.currentTarget.style.background = 'transparent';
+                              }}
+                            >
+                              <item.icon size={15} strokeWidth={1.8} />
+                              <span className="flex-1 truncate">{item.label}</span>
+                              {badge !== undefined && badge > 0 && (
+                                <span className={`ml-auto text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badgeColor || 'bg-[#4FD1C5]'}`}>
+                                  {badge}
+                                </span>
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Other Group */}
+          {/* Data Master Group */}
           <div>
             {!isCollapsed && (
-              <div className="px-5 mb-2 mt-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#A0AEC0]">
-                Lainnya
+              <div className="px-5 mb-1 mt-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[#A0AEC0]">
+                Data Master
               </div>
             )}
             <div className="flex flex-col gap-0.5">
-              {otherNavItems.map((item) => (
+              {mainNavItems.filter(item => item.path !== '/dashboard').map((item) => (
                 <NavItem 
                   key={item.path} 
                   item={item} 

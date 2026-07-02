@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../../../context/MemberAuthContext';
-import './member-auth.css';
 import { supabase } from '../../../lib/supabase';
+import { pointService } from '../../../lib/supabaseService';
+import './member-auth.css';
 
 const LogoSVG = () => (
   <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
@@ -112,8 +113,21 @@ export default function MemberRegister() {
         console.error('Error inserting into pipeline_members:', pipelineError);
       }
 
+      // 3. Award registration bonus points (50 poin)
+      try {
+        await pointService.addPoints(
+          user.id,
+          50,
+          'bonus_registrasi',
+          'Bonus pendaftaran member baru: 50 poin'
+        );
+      } catch (pointErr) {
+        console.error('Error awarding registration points:', pointErr);
+        // Non-fatal: don't block registration if points fail
+      }
+
       setSuccess(`Selamat datang, ${form.name.split(' ')[0]}! Akun member kamu berhasil dibuat.`);
-      setTimeout(() => navigate('/member'), 1800);
+      setTimeout(() => navigate('/'), 2000);
     } catch (err) {
       console.error(err);
       setErrors({ auth: err.message || 'Terjadi kesalahan sistem' });

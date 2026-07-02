@@ -2,46 +2,56 @@ import React, { useState, useEffect } from 'react';
 import {
   Bell, Search, ChevronDown,
   LayoutDashboard, Users, CalendarDays,
-  BarChart3, Megaphone, Briefcase,
-  HeadphonesIcon, Settings, Component,
-  Kanban, ClipboardList, UserPlus, Layers, Send, Ticket, Zap, ListOrdered
+  BarChart3, Megaphone, Settings, Component,
+  ClipboardList, UserPlus, Layers, Send, Ticket, Zap, ListOrdered,
+  Wrench, DollarSign, UserCheck
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-/* ─── Nav data ─────────────────────────────────────────────── */
+/* ─── Nav data — Simplified to 3 CRM Pillars ──────────────── */
 const navItems = [
   {
     label: 'Dashboard',
     icon: LayoutDashboard,
     links: [
-      { label: 'Overview',  description: 'Ringkasan klinik hari ini',      path: '/',        icon: LayoutDashboard },
-      { label: 'Analitik',  description: 'Tren & statistik mendalam',       path: '/analitik', icon: BarChart3       },
-      { label: 'Reminder Vaksin', description: 'Pengingat jadwal vaksinasi pasien', path: '/reminder', icon: Bell },
+      { label: 'Overview',      description: 'Ringkasan klinik hari ini',   path: '/dashboard', icon: LayoutDashboard },
+      { label: 'Analitik',      description: 'Tren & statistik mendalam',   path: '/analitik',  icon: BarChart3       },
+      { label: 'Kelola Member', description: 'Data member terdaftar',       path: '/admin/members', icon: Users },
+      { label: 'Pasien',        description: 'Daftar pasien & rekam medis', path: '/pasien',    icon: Users        },
     ],
   },
   {
-    label: 'Pasien',
-    icon: Users,
+    label: 'Service',
+    icon: Wrench,
+    color: '#3b5bdb',
     links: [
-      { label: 'Daftar Pasien', description: 'Kelola rekam medis pasien',    path: '/pasien',  icon: Users        },
-      { label: 'Jadwal Temu',   description: 'Atur appointment & jadwal',    path: '/jadwal',  icon: CalendarDays },
-      { label: 'Antrian Digital', description: 'Antrean kunjungan klinik',   path: '/antrian', icon: ListOrdered  },
+      { label: 'Case Management', description: 'Management kasus & komplain',    path: '/service',   icon: Wrench         },
+      { label: 'Jadwal Temu',     description: 'Atur appointment & jadwal dokter', path: '/jadwal',  icon: CalendarDays   },
+      { label: 'Antrian Digital', description: 'Antrean kunjungan klinik',       path: '/antrian', icon: ListOrdered     },
+      { label: 'Tiket Keluhan',   description: 'Tiket keluhan pelanggan',       path: '/tiket',    icon: Ticket         },
+      { label: 'SLA Monitor',     description: 'Monitor response time',          path: '/sla',      icon: Zap            },
     ],
   },
   {
-    label: 'CRM',
-    icon: Briefcase,
+    label: 'Sales',
+    icon: DollarSign,
+    color: '#0ca678',
     links: [
-      { label: 'Marketing', description: 'Kampanye & promosi',          path: '/marketing', icon: Megaphone       },
-      { label: 'Sales',     description: 'Pipeline & peluang penjualan', path: '/sales',     icon: Briefcase       },
-      { label: 'Layanan',   description: 'Support & layanan pelanggan',  path: '/service',   icon: HeadphonesIcon  },
-      { label: 'Pipeline Member', description: 'Kanban board member',    path: '/pipeline',  icon: Kanban          },
-      { label: 'Follow-up Kunjungan', description: 'Checklist kunjungan pasien', path: '/followup', icon: ClipboardList },
-      { label: 'Lead Management', description: 'Kelola leads & calon pasien', path: '/leads',     icon: UserPlus        },
-      { label: 'Segmentasi Member', description: 'Segmentasi target pasar',   path: '/segmentasi', icon: Layers         },
-      { label: 'Pesan Massal',     description: 'Kirim WA & email massal',   path: '/blast',      icon: Send           },
-      { label: 'Tiket Keluhan',    description: 'Tiket keluhan pelanggan',   path: '/tiket',      icon: Ticket         },
-      { label: 'SLA Monitor',      description: 'Monitor response time keluhan', path: '/sla',    icon: Zap            },
+      { label: 'Sales Pipeline',     description: 'Data transaksi & peluang',        path: '/sales',     icon: DollarSign    },
+      { label: 'Pipeline Member',    description: 'Kanban board member pipeline',   path: '/pipeline',  icon: UserCheck     },
+      { label: 'Follow-up',          description: 'Checklist kunjungan pasien',      path: '/followup',  icon: ClipboardList },
+      { label: 'Lead Management',    description: 'Kelola leads & calon pasien',    path: '/leads',     icon: UserPlus      },
+    ],
+  },
+  {
+    label: 'Marketing',
+    icon: Megaphone,
+    color: '#f76707',
+    links: [
+      { label: 'Campaign Management', description: 'Kampanye & promosi',           path: '/marketing',   icon: Megaphone      },
+      { label: 'Segmentasi Member',   description: 'Segmentasi target pasar',      path: '/segmentasi',  icon: Layers         },
+      { label: 'Pesan Massal',        description: 'Kirim WA & email massal',      path: '/blast',       icon: Send           },
+      { label: 'Reminder Vaksin',     description: 'Pengingat jadwal vaksinasi',  path: '/reminder',    icon: Bell           },
     ],
   },
   {

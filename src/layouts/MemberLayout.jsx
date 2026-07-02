@@ -5,7 +5,7 @@ import { vaccineService, jadwalService, chatService, ticketService } from '../li
 import '../pages/member/member-dashboard.css';
 
 const NAV_ITEMS_TEMPLATE = [
-  { id: 'dashboard', icon: '🏠', label: 'Dashboard', path: '/member' },
+  { id: 'membership', icon: '🏆', label: 'Membership', path: '/member/membership' },
   { id: 'pets', icon: '🐾', label: 'Hewan Peliharaan', path: '/member/hewan' },
   { id: 'appointments', icon: '📅', label: 'Janji Temu', path: '/member/janji' },
   { id: 'vaccines', icon: '💉', label: 'Jadwal Vaksinasi', path: '/member/vaksin' },
@@ -17,7 +17,7 @@ const NAV_ITEMS_TEMPLATE = [
   { id: 'profile', icon: '👤', label: 'Profil Saya', path: '/member/profil' },
 ];
 
-const BOTTOM_NAV = ['dashboard', 'pets', 'antrian', 'tiket', 'profile'];
+const BOTTOM_NAV = ['membership', 'pets', 'antrian', 'tiket', 'profile'];
 
 const LogoSVG = () => (
   <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
@@ -110,10 +110,10 @@ export default function MemberLayout() {
   };
 
   const isItemActive = (item) => {
-    if (item.id === 'dashboard') {
-      return location.pathname === '/member';
+    if (item.id === 'membership') {
+      return location.pathname.startsWith('/member/membership');
     }
-    return location.pathname.startsWith(item.path) && item.id !== 'dashboard' && item.path !== '/member';
+    return location.pathname.startsWith(item.path) && item.path !== '/member/membership';
   };
 
   const navItems = NAV_ITEMS_TEMPLATE.map(item => {

@@ -1022,6 +1022,87 @@ export const billService = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// POINT SERVICE (Membership Points)
+// ─────────────────────────────────────────────────────────────────────────────
+export const pointService = {
+  /** Get current points and tier for a user */
+  getProfile: async (userId) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('total_poin, tier, created_at')
+      .eq('user_id', userId)
+      .single();
+    if (error) { handleError('pointService.getProfile', error); return { total_poin: 0, tier: 'Bronze' }; }
+    return { total_poin: data.total_poin || 0, tier: data.tier || 'Bronze', created_at: data.created_at };
+  },
+
+  /** Get point transaction history for a user */
+  getHistory: async (userId, limit = 10) => {
+    const { data, error } = await supabase
+      .from('point_transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) { handleError('pointService.getHistory', error); return []; }
+    return data.map(p => ({
+      id: p.id,
+      poin: p.poin,
+      jenis: p.jenis,
+      sumber: p.sumber,
+      keterangan: p.keterangan,
+      nominalTransaksi: p.nominal_transaksi,
+      createdAt: p.created_at,
+    }));
+  },
+
+  /** Manually add points (e.g., registration bonus) */
+  addPoints: async (userId, poin, sumber, keterangan) => {
+    // Add point transaction record
+    const { error: txError } = await supabase
+      .from('point_transactions')
+      .insert([{
+        user_id: userId,
+        poin,
+        jenis: 'earn',
+        sumber,
+        keterangan,
+      }]);
+    if (txError) { handleError('pointService.addPoints.tx', txError); return false; }
+
+    // Update user's total points
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('total_poin')
+      .eq('user_id', userId)
+      .single();
+
+    const currentPoints = profile?.total_poin || 0;
+    const newPoints = currentPoints + poin;
+
+    // Calculate tier
+    let tier = 'Bronze';
+    if (newPoints >= 1000) tier = 'Gold';
+    else if (newPoints >= 500) tier = 'Silver';
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ total_poin: newPoints, tier })
+      .eq('user_id', userId);
+
+    if (updateError) { handleError('pointService.addPoints.update', updateError); return false; }
+    return true;
+  },
+
+  /** Get tier configuration */
+  getTierInfo: (points) => {
+    if (points >= 1000) return { name: 'Gold', minPoints: 1000, nextTier: null };
+    if (points >= 500) return { name: 'Silver', minPoints: 500, nextTier: 'Gold', pointsToNext: 1000 - points };
+    return { name: 'Bronze', minPoints: 0, nextTier: 'Silver', pointsToNext: 500 - points };
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MEMBER PROFILE SERVICE
 // ─────────────────────────────────────────────────────────────────────────────
 export const memberProfileService = {

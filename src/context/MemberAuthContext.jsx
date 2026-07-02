@@ -10,7 +10,9 @@ const getInitialState = () => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const member = JSON.parse(stored);
-      return { member, isLoggedIn: true, loading: false };
+      // loading: true — jangan biarkan GuestRoute/MemberRoute redirect
+      // berdasarkan data stale. Tunggu getSession + handleAuthChange dulu.
+      return { member, isLoggedIn: true, loading: true };
     }
   } catch (_) {}
   return { member: null, isLoggedIn: false, loading: true };
@@ -53,13 +55,15 @@ export function MemberAuthProvider({ children }) {
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
         // Fetch user profile from profiles table to get their role ('admin' | 'member')
+        // Pakai .maybeSingle() — lebih aman, tidak return error untuk 0 rows
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', session.user.id)
-          .single();
+          .maybeSingle();
 
-        if (profile) {
+        if (profile && !error) {
+          console.log('[Auth] Profile ditemukan, role:', profile.role);
           dispatch({
             type: 'LOGIN',
             payload: {
@@ -71,6 +75,7 @@ export function MemberAuthProvider({ children }) {
             }
           });
         } else {
+          console.warn('[Auth] Profile tidak ditemukan, fallback ke metadata, error:', error?.message);
           // Fallback if profile doesn't exist yet (trigger might be delayed)
           dispatch({
             type: 'LOGIN',
@@ -104,8 +109,17 @@ export function MemberAuthProvider({ children }) {
 
   // Sync session on mount & listen to changes
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleAuthChange(session);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        // AWAIT handleAuthChange — jangan set loading:false sebelum
+        // query profile selesai, agar GuestRoute/MemberRoute punya
+        // role yang akurat (bukan dari localStorage stale).
+        await handleAuthChange(session);
+      }
+      // Jangan dispatch LOGOUT jika session null — biarkan onAuthStateChange
+      // yang handle state sebenarnya. Ini mencegah race condition saat login:
+      // getSession() bisa null sebelum onAuthStateChange selesai.
+      dispatch({ type: 'SET_LOADING', payload: false });
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

@@ -36,10 +36,11 @@ const Blast = lazy(() => import('./pages/Blast'));
 // Auth pages
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
 const MemberRegister = lazy(() => import('./pages/member/auth/MemberRegister'));
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
 const MembersManagement = lazy(() => import('./pages/admin/MembersManagement'));
 
 // Member pages
-const MemberDashboard = lazy(() => import('./pages/member/MemberDashboard'));
+const MemberMembership = lazy(() => import('./pages/member/MemberMembership'));
 const MemberTickets = lazy(() => import('./pages/member/MemberTickets'));
 const MemberQueue = lazy(() => import('./pages/member/MemberQueue'));
 const MemberPets = lazy(() => import('./pages/member/MemberPets'));
@@ -82,13 +83,19 @@ function App() {
             <Route element={<AuthLayout />}>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<MemberRegister />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
             </Route>
+          </Route>
+
+          {/* ── Member standalone pages (guest layout) ────── */}
+          <Route element={<MemberProtectedRoute />}>
+            <Route path="/member/membership" element={<MemberMembership />} />
           </Route>
 
           {/* ── Member protected routes ─────────────────────── */}
           <Route element={<MemberProtectedRoute />}>
             <Route element={<MemberLayout />}>
-              <Route path="/member" element={<MemberDashboard />} />
+              <Route path="/member" element={<Navigate to="/member/membership" replace />} />
               <Route path="/member/tiket"     element={<MemberTickets />} />
               <Route path="/member/antrian"   element={<MemberQueue />} />
               <Route path="/member/hewan"          element={<MemberPets />} />
