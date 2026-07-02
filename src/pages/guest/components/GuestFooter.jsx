@@ -127,9 +127,9 @@ export default function GuestFooter() {
                 { label: 'Tentang Kami', id: 'tentang' },
                 { label: 'Tim Dokter', id: 'tentang' },
                 { label: 'Jam Operasional', id: 'tentang' },
+                { label: 'Program Membership', id: 'membership' },
+                { label: 'FAQ / Bantuan', id: 'faq' },
                 { label: 'Promo & Paket', id: 'layanan' },
-                { label: 'Blog Kesehatan', id: 'beranda' },
-                { label: 'FAQ', id: 'beranda' },
               ].map((item) => (
                 <li key={item.label}>
                   <button

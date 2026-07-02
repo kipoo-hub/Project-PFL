@@ -27,7 +27,7 @@ export default function GuestNavbar() {
       prevScrollPosRef.current = currentScrollPos;
 
       // Active section detection
-      const sections = ['beranda', 'layanan', 'tentang', 'kontak'];
+      const sections = ['beranda', 'masalah', 'layanan', 'fitur', 'membership', 'tentang', 'faq', 'kontak'];
       
       const isAtBottom = (window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 100);
       if (isAtBottom) {
@@ -98,6 +98,8 @@ export default function GuestNavbar() {
           {[
             { label: 'Beranda', id: 'beranda' },
             { label: 'Layanan', id: 'layanan' },
+            { label: 'Membership', id: 'membership' },
+            { label: 'FAQ', id: 'faq' },
             { label: 'Tentang Kami', id: 'tentang' },
             { label: 'Kontak', id: 'kontak' },
           ].map((item) => (
@@ -192,6 +194,8 @@ export default function GuestNavbar() {
         {[
           { label: 'Beranda', id: 'beranda' },
           { label: 'Layanan', id: 'layanan' },
+          { label: 'Membership', id: 'membership' },
+          { label: 'FAQ', id: 'faq' },
           { label: 'Tentang Kami', id: 'tentang' },
           { label: 'Kontak', id: 'kontak' },
         ].map((item) => (

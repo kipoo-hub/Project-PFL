@@ -2,10 +2,12 @@ import React, { useEffect } from 'react';
 import './guest.css';
 import GuestNavbar from './components/GuestNavbar';
 import HeroSection from './components/HeroSection';
+import ProblemSolutionSection from './components/ProblemSolutionSection';
 import ServicesSection from './components/ServicesSection';
+import FeatureSection from './components/FeatureSection';
 import MembershipSection from './components/MembershipSection';
 import WhyUsSection from './components/WhyUsSection';
-import TestimonialSection from './components/TestimonialSection';
+import FAQSection from './components/FAQSection';
 import CtaBanner from './components/CtaBanner';
 import GuestFooter from './components/GuestFooter';
 
@@ -33,21 +35,32 @@ export default function GuestPage() {
     <div className="guest-page">
       <GuestNavbar />
       <main>
+        {/* ── AREA TOP: Attention ─────────────────────── */}
         <HeroSection />
+
+        {/* ── AREA MIDDLE: Interest ───────────────────── */}
+        <ProblemSolutionSection />
         <ServicesSection />
+
+        {/* ── AREA MIDDLE: Desire ─────────────────────── */}
+        <FeatureSection />
         <MembershipSection />
         <WhyUsSection />
-        <TestimonialSection />
+
+        {/* ── AREA MIDDLE: Menghilangkan Hambatan ──────── */}
+        <FAQSection />
+
+        {/* ── AREA BOTTOM: Action ─────────────────────── */}
         <CtaBanner />
       </main>
       <GuestFooter />
 
       {/* Floating WhatsApp Button */}
-      <a 
-        href="https://wa.me/6282292707434" 
-        target="_blank" 
-        rel="noopener noreferrer" 
-        className="whatsapp-floating-btn" 
+      <a
+        href="https://wa.me/6282292707434"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="whatsapp-floating-btn"
         title="Chat WhatsApp"
       >
         <span className="whatsapp-floating-btn__tooltip">Chat WhatsApp</span>
