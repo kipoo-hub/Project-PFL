@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useMemberAuth } from '../../context/MemberAuthContext';
+import { useMemberAuth, redirectByRole } from '../../context/MemberAuthContext';
+import { supabase } from '../../lib/supabase';
 import '../../pages/member/auth/member-auth.css';
 
 const LogoSVG = () => (
@@ -85,16 +86,32 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await signIn(email, password);
-      // Login sukses — tampilkan loading screen, biarkan GuestRoute
-      // yang handle redirect setelah onAuthStateChange + handleAuthChange selesai.
+      const data = await signIn(email, password);
+      const user = data?.user;
+
+      if (!user) {
+        throw new Error('Gagal mendapatkan informasi user.');
+      }
+
+      // Fetch user profile from database to get role ('admin' | 'member' | 'guest')
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const role = (profile && !profileError) ? profile.role : 'guest';
+
       setLoginSuccess(true);
       setLoading(false);
 
-      // Fallback: jika context tidak kunjung siap, redirect ke halaman guest
+      // Redirect immediately based on role
+      redirectByRole(role, navigate);
+
+      // Fallback: jika navigation gagal
       timeoutRef.current = setTimeout(() => {
-        navigate('/', { replace: true });
-      }, 8000);
+        redirectByRole(role, navigate);
+      }, 3000);
     } catch (err) {
       console.error('Login error:', err);
       if (err.message?.includes('Invalid login credentials')) {

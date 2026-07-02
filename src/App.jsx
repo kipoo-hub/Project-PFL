@@ -11,7 +11,7 @@ import MemberLayout from './layouts/MemberLayout';
 import { MemberAuthProvider } from './context/MemberAuthContext';
 
 // Route Guards
-import { AdminProtectedRoute, MemberProtectedRoute, GuestRoute } from './components/MemberRoute';
+import { AdminProtectedRoute, MemberProtectedRoute, GuestProtectedRoute, GuestRoute } from './components/MemberRoute';
 
 // Pages — lazy loaded
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -69,8 +69,12 @@ function App() {
           <Route path="/" element={<GuestPage />} />
           <Route path="/antrian/display" element={<QueueDisplay />} />
 
+          {/* ── Guest protected route ──────────────────────── */}
+          <Route element={<GuestProtectedRoute />}>
+            <Route path="/guest" element={<GuestPage />} />
+          </Route>
+
           {/* ── Guest redirects to unified login ──────────────── */}
-          <Route path="/guest" element={<Navigate to="/" replace />} />
           <Route path="/member/login" element={<Navigate to="/login" replace />} />
           <Route path="/guest/login" element={<Navigate to="/login" replace />} />
           <Route path="/admin/login" element={<Navigate to="/login" replace />} />
@@ -90,6 +94,7 @@ function App() {
           {/* ── Member standalone pages (guest layout) ────── */}
           <Route element={<MemberProtectedRoute />}>
             <Route path="/member/membership" element={<MemberMembership />} />
+            <Route path="/membership" element={<Navigate to="/member/membership" replace />} />
           </Route>
 
           {/* ── Member protected routes ─────────────────────── */}
@@ -109,10 +114,16 @@ function App() {
             </Route>
           </Route>
 
+          {/* ── Dashboard accessible to any logged-in user ────────────────── */}
+          <Route element={<GuestProtectedRoute />}>
+            <Route element={<MainLayout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+            </Route>
+          </Route>
+
           {/* ── Admin protected routes (MainLayout) ──────────── */}
           <Route element={<AdminProtectedRoute />}>
             <Route element={<MainLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/pasien"     element={<Pasien />} />
               <Route path="/jadwal"     element={<JadwalTemu />} />
               <Route path="/analitik"   element={<Analitik />} />

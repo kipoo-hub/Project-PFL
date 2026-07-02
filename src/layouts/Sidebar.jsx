@@ -178,7 +178,7 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
     const isConfirm = window.confirm('Apakah Anda yakin ingin keluar?');
     if (isConfirm) {
       await logout();
-      navigate('/login');
+      navigate('/login', { replace: true });
     }
   };
 

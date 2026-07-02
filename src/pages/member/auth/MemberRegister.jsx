@@ -85,8 +85,8 @@ export default function MemberRegister() {
 
     setLoading(true);
     try {
-      // 1. Sign up using Supabase Auth (which triggers auto-creation of a profile in database)
-      const data = await signUp(form.name, form.email, form.password, 'member');
+      // 1. Sign up using Supabase Auth (which triggers auto-creation of a profile in database with role = 'guest')
+      const data = await signUp(form.name, form.email, form.password, 'guest');
       const user = data?.user;
 
       if (!user) {
@@ -126,8 +126,8 @@ export default function MemberRegister() {
         // Non-fatal: don't block registration if points fail
       }
 
-      setSuccess(`Selamat datang, ${form.name.split(' ')[0]}! Akun member kamu berhasil dibuat.`);
-      setTimeout(() => navigate('/'), 2000);
+      setSuccess(`Selamat datang, ${form.name.split(' ')[0]}! Akun kamu berhasil dibuat.`);
+      setTimeout(() => navigate('/guest', { replace: true }), 2000);
     } catch (err) {
       console.error(err);
       setErrors({ auth: err.message || 'Terjadi kesalahan sistem' });
@@ -365,7 +365,7 @@ export default function MemberRegister() {
 
           <p className="mauth-footer-link">
             Sudah punya akun?{' '}
-            <Link to="/member/login">Masuk di sini</Link>
+            <Link to="/login">Masuk di sini</Link>
           </p>
         </div>
       </div>

@@ -1136,6 +1136,10 @@ export const memberProfileService = {
 // ─────────────────────────────────────────────────────────────────────────────
 export const dashboardService = {
   getStats: async () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const startOfYear = `${new Date().getFullYear()}-01-01`;
+
     const [
       { count: totalMembers },
       { count: totalPasien },
@@ -1143,26 +1147,97 @@ export const dashboardService = {
       { data: pendingVaccines },
       { data: newTickets },
       { data: waitingQueues },
+      { count: kasusKritis },
+      { data: billsThisMonth },
+      { data: pasiens },
+      { data: apptsYear },
+      { data: billsYear },
     ] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'member'),
       supabase.from('pasien').select('*', { count: 'exact', head: true }),
-      supabase.from('jadwal_temu').select('id, pet_name, pemilik, spesies, layanan, waktu, status').eq('tanggal', new Date().toISOString().split('T')[0]).order('waktu'),
+      supabase.from('jadwal_temu').select('id, pet_name, pemilik, spesies, layanan, waktu, status').eq('tanggal', todayStr).order('waktu'),
       supabase.from('vaksin').select('id').eq('status', 'Belum Diingatkan').lte('due_date', new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]),
       supabase.from('tickets').select('id').eq('status', 'Baru'),
       supabase.from('queues').select('id').eq('status', 'Menunggu'),
+      supabase.from('pasien').select('*', { count: 'exact', head: true }).eq('status', 'Kritis'),
+      supabase.from('bills').select('amount').gte('bill_date', startOfMonth).in('status', ['Lunas', 'Paid', 'Selesai', 'Selesai Dibayar']),
+      supabase.from('pasien').select('spesies'),
+      supabase.from('jadwal_temu').select('tanggal').gte('tanggal', startOfYear),
+      supabase.from('bills').select('amount, bill_date').gte('bill_date', startOfYear).in('status', ['Lunas', 'Paid', 'Selesai', 'Selesai Dibayar']),
     ]);
+
+    // 1. Calculate stats counts
+    const kunjunganHariIni = (todayAppts || []).length;
+    const sisaHariIni = (todayAppts || []).filter(a => a.status === 'Menunggu' || a.status === 'Dikonfirmasi' || a.status === 'Sedang Berjalan').length;
+    const pendapatanBulanIni = (billsThisMonth || []).reduce((sum, b) => sum + (parseFloat(b.amount) || 0), 0);
+    const targetPendapatan = 15000000; // Rp 15 Juta
+
+    // 2. Calculate species distribution
+    const speciesCounts = {};
+    (pasiens || []).forEach(p => {
+      const sp = p.spesies || 'Lainnya';
+      speciesCounts[sp] = (speciesCounts[sp] || 0) + 1;
+    });
+    const totalP = (pasiens || []).length || 1;
+    const speciesColors = {
+      'Anjing': '#3b5bdb',
+      'Kucing': '#7048e8',
+      'Burung': '#0ca678',
+      'Kelinci': '#f76707',
+      'Lainnya': '#e03131'
+    };
+    const speciesData = Object.entries(speciesCounts).map(([name, count]) => ({
+      name,
+      value: Math.round((count / totalP) * 100),
+      color: speciesColors[name] || '#6b7280'
+    })).sort((a, b) => b.value - a.value);
+
+    // If speciesData is empty, use default species template
+    const finalSpeciesData = speciesData.length > 0 ? speciesData : [
+      { name: 'Anjing', value: 0, color: '#3b5bdb' },
+      { name: 'Kucing', value: 0, color: '#7048e8' }
+    ];
+
+    // 3. Group appointments by month for chart
+    const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const monthlyAppointments = monthsShort.map(m => ({ month: m, jumlah: 0 }));
+    (apptsYear || []).forEach(a => {
+      const mIdx = new Date(a.tanggal).getMonth();
+      if (mIdx >= 0 && mIdx < 12) {
+        monthlyAppointments[mIdx].jumlah++;
+      }
+    });
+
+    // 4. Group revenue by month for chart
+    const monthlyRevenue = monthsShort.map(m => ({ bulan: m, pendapatan: 0 }));
+    (billsYear || []).forEach(b => {
+      const mIdx = new Date(b.bill_date).getMonth();
+      if (mIdx >= 0 && mIdx < 12) {
+        monthlyRevenue[mIdx].pendapatan += parseFloat(b.amount) || 0;
+      }
+    });
+    const currentMonthIdx = new Date().getMonth();
+    const finalRevenueData = monthlyRevenue.slice(0, currentMonthIdx + 1);
 
     return {
       totalMembers: totalMembers || 0,
       totalPasien: totalPasien || 0,
+      kunjunganHariIni,
+      sisaHariIni,
+      pendapatanBulanIni,
+      targetPendapatan,
+      kasusKritis: kasusKritis || 0,
+      speciesData: finalSpeciesData,
+      monthlyAppointments,
+      revenueData: finalRevenueData.length > 0 ? finalRevenueData : monthlyRevenue.slice(0, 6),
       todayAppointments: (todayAppts || []).map(a => ({
-        id: a.id,
-        pemilik: a.pemilik,
-        hewan: a.pet_name,
-        spesies: a.spesies,
-        jenis: a.layanan,
-        waktu: a.waktu?.substring(0, 5),
-        status: a.status,
+        id: a.id?.substring(0, 8) || 'APT-000',
+        pemilik: a.pemilik || 'Pemilik',
+        hewan: a.pet_name || 'Hewan',
+        spesies: a.spesies || 'Lainnya',
+        jenis: a.layanan || 'Pemeriksaan',
+        waktu: a.waktu?.substring(0, 5) || '00:00',
+        status: a.status || 'Menunggu',
       })),
       pendingVaccines: (pendingVaccines || []).length,
       newTickets: (newTickets || []).length,

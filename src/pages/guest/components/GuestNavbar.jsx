@@ -151,7 +151,7 @@ export default function GuestNavbar() {
               <button
                 id="navbar-logout-btn"
                 className="guest-btn guest-btn--outline"
-                onClick={() => { logout(); navigate('/'); }}
+                onClick={async () => { await logout(); navigate('/login', { replace: true }); }}
                 style={{ color: '#e03131', borderColor: '#fecaca' }}
               >
                 Keluar

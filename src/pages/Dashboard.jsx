@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -172,6 +173,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -347,11 +349,11 @@ const Dashboard = () => {
               Kunjungan per Bulan
             </h3>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              Tahun 2025
+              Tahun {new Date().getFullYear()}
             </p>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={monthlyAppointments} barSize={20}>
+            <BarChart data={stats?.monthlyAppointments || monthlyAppointments} barSize={20}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={30} />
@@ -374,11 +376,11 @@ const Dashboard = () => {
               Tren Pendapatan
             </h3>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              11 bulan terakhir
+              Hingga bulan ini
             </p>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={revenueData}>
+            <LineChart data={stats?.revenueData || revenueData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
               <XAxis dataKey="bulan" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
               <YAxis
@@ -420,7 +422,7 @@ const Dashboard = () => {
           <ResponsiveContainer width="100%" height={140}>
             <PieChart>
               <Pie
-                data={speciesData}
+                data={stats?.speciesData || speciesData}
                 cx="50%"
                 cy="50%"
                 innerRadius={40}
@@ -428,7 +430,7 @@ const Dashboard = () => {
                 paddingAngle={3}
                 dataKey="value"
               >
-                {speciesData.map((entry, index) => (
+                {(stats?.speciesData || speciesData).map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -436,7 +438,7 @@ const Dashboard = () => {
             </PieChart>
           </ResponsiveContainer>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-            {speciesData.map(item => (
+            {(stats?.speciesData || speciesData).map(item => (
               <div key={item.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: item.color, flexShrink: 0 }} />
@@ -478,11 +480,12 @@ const Dashboard = () => {
                 Jadwal Kunjungan Hari Ini
               </h3>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
-                {recentAppointments.length} kunjungan terjadwal
+                {(stats?.todayAppointments || []).length} kunjungan terjadwal
               </p>
             </div>
             <button
               id="dashboard-see-all-btn"
+              onClick={() => navigate('/jadwal')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -528,39 +531,47 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {recentAppointments.map((apt, i) => (
-                  <tr
-                    key={apt.id}
-                    style={{
-                      borderBottom: i < recentAppointments.length - 1 ? '1px solid var(--border-color)' : 'none',
-                      transition: 'background 0.15s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#fafbff'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                      {apt.id}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                      {apt.pemilik}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>
-                      {apt.hewan}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
-                      {apt.spesies}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
-                      {apt.jenis}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                      {apt.waktu} WIB
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <StatusBadge status={apt.status} />
+                {(stats?.todayAppointments || []).length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                      Belum ada jadwal kunjungan untuk hari ini.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  (stats.todayAppointments).map((apt, i) => (
+                    <tr
+                      key={apt.id}
+                      style={{
+                        borderBottom: i < stats.todayAppointments.length - 1 ? '1px solid var(--border-color)' : 'none',
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fafbff'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                        {apt.id}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                        {apt.pemilik}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>
+                        {apt.hewan}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                        {apt.spesies}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                        {apt.jenis}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                        {apt.waktu} WIB
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <StatusBadge status={apt.status} />
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

@@ -6,10 +6,7 @@ import { supabase } from '../lib/supabase';
 /**
  * AdminProtectedRoute — protects /dashboard/** routes.
  * - If NOT logged in → redirect to /login
- * - If logged in but NOT admin → redirect to appropriate route based on role
- *
- * Tambahan: jika context member mengatakan 'member', kita tetap cek langsung
- * ke Supabase untuk memastikan — mencegah race condition handleAuthChange.
+ * - If logged in but NOT admin → redirect to /guest
  */
 export function AdminProtectedRoute() {
   const { isLoggedIn, member, loading } = useMemberAuth();
@@ -17,7 +14,7 @@ export function AdminProtectedRoute() {
   const [directRole, setDirectRole] = useState(null);
   const [checking, setChecking] = useState(true);
 
-  // Cek langsung ke Supabase untuk memastikan role
+  // Direct check to Supabase for role verification
   useEffect(() => {
     const fetchDirectRole = async () => {
       try {
@@ -37,34 +34,43 @@ export function AdminProtectedRoute() {
   }, []);
 
   if (loading || checking) {
-    return <div style={{ padding: 40, textAlign: 'center' }}>Memuat autentikasi...</div>;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <div style={{ color: '#16a34a', fontSize: '1rem' }}>Memuat autentikasi admin...</div>
+      </div>
+    );
   }
 
   if (!isLoggedIn) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Gunakan role dari query langsung sebagai prioritas, fallback ke context
   const effectiveRole = directRole || member?.role;
   
   if (effectiveRole !== 'admin') {
-    return <Navigate to="/member" replace />;
+    return <Navigate to="/guest" replace />;
   }
 
   return <Outlet />;
 }
 
 /**
- * MemberProtectedRoute — protects /member/** routes.
+ * MemberProtectedRoute — protects /member/** routes and /membership.
  * - If NOT logged in → redirect to /login
- * - If logged in but NOT member → redirect to /dashboard (admin dashboard)
+ * - If logged in but NOT member:
+ *   - If admin → redirect to /dashboard
+ *   - If guest → redirect to /guest
  */
 export function MemberProtectedRoute() {
   const { isLoggedIn, member, loading } = useMemberAuth();
   const location = useLocation();
 
   if (loading) {
-    return <div style={{ padding: 40, textAlign: 'center' }}>Memuat autentikasi...</div>;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <div style={{ color: '#16a34a', fontSize: '1rem' }}>Memuat autentikasi member...</div>
+      </div>
+    );
   }
 
   if (!isLoggedIn) {
@@ -72,27 +78,68 @@ export function MemberProtectedRoute() {
   }
 
   if (member?.role !== 'member') {
-    return <Navigate to="/dashboard" replace />;
+    if (member?.role === 'admin') {
+      return <Navigate to="/dashboard" replace />;
+    }
+    return <Navigate to="/guest" replace />;
   }
 
   return <Outlet />;
 }
 
 /**
- * GuestRoute — blocks logged-in users from accessing auth pages (/login, etc.)
+ * GuestProtectedRoute — protects /guest.
+ * - If NOT logged in → redirect to /login
+ * - If logged in → allowed (any role)
+ */
+export function GuestProtectedRoute() {
+  const { isLoggedIn, loading } = useMemberAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <div style={{ color: '#16a34a', fontSize: '1rem' }}>Memuat autentikasi...</div>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <Outlet />;
+}
+
+/**
+ * GuestRoute — blocks logged-in users from accessing auth pages (/login, /register, etc.)
+ * Redirects authenticated users to their role-specific landing pages.
  */
 export function GuestRoute() {
   const { isLoggedIn, member, loading } = useMemberAuth();
   const location = useLocation();
 
   if (loading) {
-    return <div style={{ padding: 40, textAlign: 'center' }}>Memuat...</div>;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <div style={{ color: '#16a34a', fontSize: '1rem' }}>Memuat...</div>
+      </div>
+    );
   }
 
   if (isLoggedIn) {
-    const destination = member?.role === 'admin' ? '/dashboard' : '/member';
+    let destination = '/guest';
+    if (member?.role === 'admin') destination = '/dashboard';
+    else if (member?.role === 'member') destination = '/member/membership';
+
     const from = location.state?.from?.pathname || destination;
-    return <Navigate to={from} replace />;
+    
+    // Safety check: prevent redirecting back to protected pages not matching the role
+    let finalDest = from;
+    if (from.startsWith('/dashboard') && member?.role !== 'admin') finalDest = destination;
+    if (from.startsWith('/member') && member?.role !== 'member') finalDest = destination;
+
+    return <Navigate to={finalDest} replace />;
   }
 
   return <Outlet />;

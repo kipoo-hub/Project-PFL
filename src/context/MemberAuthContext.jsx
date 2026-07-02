@@ -9,34 +9,58 @@ const getInitialState = () => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      const member = JSON.parse(stored);
-      // loading: true — jangan biarkan GuestRoute/MemberRoute redirect
-      // berdasarkan data stale. Tunggu getSession + handleAuthChange dulu.
-      return { member, isLoggedIn: true, loading: true };
+      const profile = JSON.parse(stored);
+      // loading: true — wait for fresh session check
+      return {
+        user: { id: profile.user_id || profile.id, email: profile.email },
+        profile: { ...profile, full_name: profile.name || profile.full_name },
+        member: { ...profile, full_name: profile.name || profile.full_name },
+        isLoggedIn: true,
+        loading: true,
+        session: null
+      };
     }
   } catch (_) {}
-  return { member: null, isLoggedIn: false, loading: true };
+  return { user: null, profile: null, member: null, isLoggedIn: false, loading: true, session: null };
 };
 
 // ── Reducer ───────────────────────────────────────────────────
 function memberReducer(state, action) {
   switch (action.type) {
     case 'LOGIN': {
-      const member = action.payload;
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(member)); } catch (_) {}
-      return { member, isLoggedIn: true, loading: false };
+      const { user, profile, session } = action.payload;
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(profile)); } catch (_) {}
+      return {
+        user,
+        profile,
+        member: profile,
+        isLoggedIn: true,
+        loading: false,
+        session
+      };
     }
     case 'LOGOUT': {
       try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
-      return { member: null, isLoggedIn: false, loading: false };
+      return {
+        user: null,
+        profile: null,
+        member: null,
+        isLoggedIn: false,
+        loading: false,
+        session: null
+      };
     }
     case 'SET_LOADING': {
       return { ...state, loading: action.payload };
     }
     case 'UPDATE_PROFILE': {
-      const updated = { ...state.member, ...action.payload };
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch (_) {}
-      return { ...state, member: updated };
+      const updatedProfile = { ...state.profile, ...action.payload, name: action.payload.name };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile)); } catch (_) {}
+      return {
+        ...state,
+        profile: updatedProfile,
+        member: updatedProfile
+      };
     }
     default:
       return state;
@@ -54,8 +78,6 @@ export function MemberAuthProvider({ children }) {
     if (session?.user) {
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
-        // Fetch user profile from profiles table to get their role ('admin' | 'member')
-        // Pakai .maybeSingle() — lebih aman, tidak return error untuk 0 rows
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('*')
@@ -64,41 +86,56 @@ export function MemberAuthProvider({ children }) {
 
         if (profile && !error) {
           console.log('[Auth] Profile ditemukan, role:', profile.role);
+          const profileWithFullName = {
+            ...profile,
+            id: profile.user_id || profile.id || session.user.id,
+            full_name: profile.name || profile.full_name || session.user.user_metadata?.name || 'User',
+          };
           dispatch({
             type: 'LOGIN',
             payload: {
-              id: session.user.id,
-              name: profile.name,
-              email: profile.email,
-              role: profile.role,
-              created_at: profile.created_at
+              user: { id: session.user.id, email: session.user.email },
+              profile: profileWithFullName,
+              session
             }
           });
         } else {
           console.warn('[Auth] Profile tidak ditemukan, fallback ke metadata, error:', error?.message);
-          // Fallback if profile doesn't exist yet (trigger might be delayed)
+          const fallbackProfile = {
+            user_id: session.user.id,
+            id: session.user.id,
+            name: session.user.user_metadata?.name || 'User',
+            full_name: session.user.user_metadata?.name || 'User',
+            email: session.user.email,
+            role: session.user.user_metadata?.role || 'guest',
+            created_at: session.user.created_at
+          };
           dispatch({
             type: 'LOGIN',
             payload: {
-              id: session.user.id,
-              name: session.user.user_metadata?.name || 'Member',
-              email: session.user.email,
-              role: session.user.user_metadata?.role || 'member',
-              created_at: session.user.created_at
+              user: { id: session.user.id, email: session.user.email },
+              profile: fallbackProfile,
+              session
             }
           });
         }
       } catch (err) {
         console.error('Error fetching user profile:', err);
-        // Soft fallback
+        const fallbackProfile = {
+          user_id: session.user.id,
+          id: session.user.id,
+          name: session.user.user_metadata?.name || 'User',
+          full_name: session.user.user_metadata?.name || 'User',
+          email: session.user.email,
+          role: session.user.user_metadata?.role || 'guest',
+          created_at: session.user.created_at
+        };
         dispatch({
           type: 'LOGIN',
           payload: {
-            id: session.user.id,
-            name: session.user.user_metadata?.name || 'Member',
-            email: session.user.email,
-            role: session.user.user_metadata?.role || 'member',
-            created_at: session.user.created_at
+            user: { id: session.user.id, email: session.user.email },
+            profile: fallbackProfile,
+            session
           }
         });
       }
@@ -131,7 +168,7 @@ export function MemberAuthProvider({ children }) {
     };
   }, []);
 
-  const signUp = async (name, email, password, role = 'member') => {
+  const signUp = async (name, email, password, role = 'guest') => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -155,11 +192,12 @@ export function MemberAuthProvider({ children }) {
   };
 
   const updateProfile = async (data) => {
-    if (!state.member?.id) return;
+    const userId = state.profile?.user_id || state.profile?.id || state.user?.id;
+    if (!userId) return;
     const { error } = await supabase
       .from('profiles')
       .update({ name: data.name })
-      .eq('user_id', state.member.id);
+      .eq('user_id', userId);
 
     if (error) throw error;
     dispatch({ type: 'UPDATE_PROFILE', payload: { name: data.name } });
@@ -177,6 +215,12 @@ export function useMemberAuth() {
   const ctx = useContext(MemberAuthContext);
   if (!ctx) throw new Error('useMemberAuth must be used inside MemberAuthProvider');
   return ctx;
+}
+
+export function redirectByRole(role, navigate) {
+  if (role === 'admin')  return navigate('/dashboard', { replace: true });
+  if (role === 'member') return navigate('/member/membership', { replace: true });
+  return navigate('/guest', { replace: true });  // guest & fallback
 }
 
 export default MemberAuthContext;
