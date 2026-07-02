@@ -8,9 +8,10 @@ import {
   Ticket, Zap, ListOrdered
 } from 'lucide-react';
 import { vaccineService, ticketService, slaService } from '../lib/supabaseService';
+import { useMemberAuth } from '../context/MemberAuthContext';
 
 const mainNavItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/members', label: 'Kelola Member', icon: Users },
   { path: '/pasien', label: 'Pasien', icon: Users },
   { path: '/jadwal', label: 'Jadwal Temu', icon: CalendarDays },
@@ -79,23 +80,14 @@ function NavItem({ item, isActive, badge, badgeColor, isCollapsed }) {
 const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { member, logout } = useMemberAuth();
   const isCollapsed = !isOpen;
 
-  const [user, setUser] = useState(() => {
-    // 1. Ambil data dari localStorage
-    const savedUser = localStorage.getItem('adminUser');
-    
-    // 2. Cek apakah ada data yang tersimpan
-    if (savedUser) {
-      return JSON.parse(savedUser);
-    }
-    // 3. Jika tidak ada (misalnya user belum login), berikan nilai kosong atau default
-    return { 
-      name: 'Guest', 
-      role: 'Pengunjung', 
-      initials: 'G' 
-    };
-  });
+  const user = member || {
+    name: 'Admin',
+    role: 'Administrator',
+    initials: 'A'
+  };
   
   const [badgeCount, setBadgeCount] = useState(0);
   const [ticketBadgeCount, setTicketBadgeCount] = useState(0);
@@ -117,9 +109,6 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   };
 
   useEffect(() => {
-    const stored = localStorage.getItem('adminUser');
-    if (stored) setUser(JSON.parse(stored));
-
     loadBadges();
 
     // Sync on storage and crm_change events
@@ -136,19 +125,19 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   }, []);
 
   const isActive = (item) =>
-    item.path === '/'
-      ? location.pathname === '/'
+    item.path === '/dashboard'
+      ? location.pathname === '/dashboard'
       : location.pathname.startsWith(item.path);
 
   const sidebarWidthClass = isOpen ? 'w-64' : 'w-16';
   const sidebarMobileClass = mobileOpen ? 'translate-x-0' : '-translate-x-full';
 
   // --- Fungsi Penanganan Logout ---
-  const handleLogout = () => {
+  const handleLogout = async () => {
     const isConfirm = window.confirm('Apakah Anda yakin ingin keluar?');
     if (isConfirm) {
-      localStorage.removeItem('adminUser'); // Hapus data login
-      navigate('/admin/login');              // Pindah ke halaman login
+      await logout();
+      navigate('/login');
     }
   };
 

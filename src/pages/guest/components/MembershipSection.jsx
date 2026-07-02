@@ -72,7 +72,7 @@ export default function MembershipSection() {
               <button
                 id="membership-cta-register"
                 className="guest-btn guest-btn--primary guest-btn--lg"
-                onClick={() => navigate('/member/register')}
+                onClick={() => navigate('/register')}
               >
                 Daftar Gratis Sekarang
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -83,7 +83,7 @@ export default function MembershipSection() {
               <button
                 id="membership-cta-login"
                 className="guest-btn guest-btn--outline"
-                onClick={() => navigate('/member/login')}
+                onClick={() => navigate('/login')}
               >
                 Sudah punya akun? Masuk
               </button>

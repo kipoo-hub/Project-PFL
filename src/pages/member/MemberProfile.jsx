@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../../context/MemberAuthContext';
 import { memberProfileService, pipelineService } from '../../lib/supabaseService';
+import { supabase } from '../../lib/supabase';
+import { logActivity } from '../../lib/logActivity';
 
 export default function MemberProfile() {
   const { member, logout } = useMemberAuth();
@@ -73,23 +75,32 @@ export default function MemberProfile() {
       const updated = { ...memberUser, name };
       localStorage.setItem('memberUser', JSON.stringify(updated));
       alert('Profil Anda berhasil diperbarui!');
+      await logActivity('Memperbarui profil member', { name, email });
       await loadProfile();
     } catch (err) {
       alert('Gagal memperbarui profil.');
     }
   };
 
-  const handleChangePasswordSubmit = (e) => {
+  const handleChangePasswordSubmit = async (e) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       alert('Sandi baru dan konfirmasi sandi tidak cocok!');
       return;
     }
-    alert('Sandi berhasil diubah!\nSilakan gunakan sandi baru Anda pada login berikutnya.');
-    setIsPasswordModalOpen(false);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      
+      alert('Sandi berhasil diubah!\nSilakan gunakan sandi baru Anda pada login berikutnya.');
+      await logActivity('Mengubah kata sandi akun');
+      setIsPasswordModalOpen(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      alert('Gagal mengubah sandi: ' + err.message);
+    }
   };
 
   const handleLogout = () => {

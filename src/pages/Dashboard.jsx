@@ -11,6 +11,7 @@ import {
 import PageHeader from '../components/PageHeader';
 import { monthlyAppointments, revenueData, speciesData, recentAppointments } from '../data/dashboard';
 import { dashboardService } from '../lib/supabaseService';
+import { supabase } from '../lib/supabase';
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const KpiCard = ({ title, value, subtitle, icon: Icon, iconBg, iconColor, trend, trendValue }) => (
@@ -112,6 +113,40 @@ const StatusBadge = ({ status }) => {
 const formatRupiah = (val) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
 
+const ActorBadge = ({ type }) => {
+  const config = {
+    'admin': { bg: '#fff5f5', color: '#e03131', label: 'Admin' },
+    'member': { bg: '#e6fcf5', color: '#0ca678', label: 'Member' },
+    'guest': { bg: '#e8f7ff', color: '#1971c2', label: 'Guest' },
+  };
+  const c = config[type] || config.guest;
+  return (
+    <span style={{
+      padding: '2px 6px',
+      borderRadius: 4,
+      background: c.bg,
+      color: c.color,
+      fontSize: 10,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+    }}>
+      {c.label}
+    </span>
+  );
+};
+
+const formatTimeAgo = (dateStr) => {
+  if (!dateStr) return '';
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return 'Baru saja';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m yang lalu`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}j yang lalu`;
+  return new Date(dateStr).toLocaleDateString('id-ID', { hour: '2-digit', minute: '2-digit' });
+};
+
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
@@ -138,16 +173,58 @@ const CustomTooltip = ({ active, payload, label }) => {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const fetchLogs = async () => {
+    try {
+      const { data: logsData, error } = await supabase
+        .from('activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      if (!logsData) return;
+
+      const actorIds = [...new Set(logsData.map(l => l.actor_id).filter(Boolean))];
+      if (actorIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, name')
+          .in('user_id', actorIds);
+
+        const profileMap = {};
+        profilesData?.forEach(p => {
+          profileMap[p.user_id] = p.name;
+        });
+
+        const enriched = logsData.map(log => ({
+          ...log,
+          actor_name: log.actor_id ? (profileMap[log.actor_id] || 'Member') : 'Guest'
+        }));
+        setLogs(enriched);
+      } else {
+        const enriched = logsData.map(log => ({
+          ...log,
+          actor_name: 'Guest'
+        }));
+        setLogs(enriched);
+      }
+    } catch (err) {
+      console.error('Error fetching activity logs:', err);
+    }
+  };
+
   useEffect(() => {
-    const fetchStats = async () => {
+    const initDashboard = async () => {
       try {
         setLoading(true);
         setError(null);
         const data = await dashboardService.getStats();
         setStats(data);
+        await fetchLogs();
       } catch (err) {
         console.error('Gagal memuat statistik dashboard:', err);
         setError('Gagal memuat data dashboard.');
@@ -155,7 +232,20 @@ const Dashboard = () => {
         setLoading(false);
       }
     };
-    fetchStats();
+
+    initDashboard();
+
+    // Subscribe to real-time activity logs
+    const logsSubscription = supabase
+      .channel('activity_logs_realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_logs' }, () => {
+        fetchLogs();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(logsSubscription);
+    };
   }, []);
 
   if (loading) {
@@ -359,112 +449,188 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Appointments Table */}
+      {/* Bottom Grid for Appointments & Logs */}
       <div style={{
-        background: 'var(--bg-card)',
-        borderRadius: 'var(--radius-md)',
-        boxShadow: 'var(--shadow-sm)',
-        border: '1px solid var(--border-color)',
-        overflow: 'hidden',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+        gap: 16,
+        alignItems: 'start',
       }}>
-        {/* Table Header */}
+        {/* Appointments Table Card */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '18px 22px',
-          borderBottom: '1px solid var(--border-color)',
+          background: 'var(--bg-card)',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: 'var(--shadow-sm)',
+          border: '1px solid var(--border-color)',
+          overflow: 'hidden',
+          minHeight: 400,
         }}>
-          <div>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Jadwal Kunjungan Hari Ini
-            </h3>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              {recentAppointments.length} kunjungan terjadwal
-            </p>
+          {/* Table Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '18px 22px',
+            borderBottom: '1px solid var(--border-color)',
+          }}>
+            <div>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                Jadwal Kunjungan Hari Ini
+              </h3>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                {recentAppointments.length} kunjungan terjadwal
+              </p>
+            </div>
+            <button
+              id="dashboard-see-all-btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 6,
+                border: 'none',
+                background: 'var(--accent-blue-light)',
+                color: 'var(--accent-blue)',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#dde4ff'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--accent-blue-light)'}
+            >
+              Lihat Semua
+              <ArrowUpRight size={13} />
+            </button>
           </div>
-          <button
-            id="dashboard-see-all-btn"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              borderRadius: 6,
-              border: 'none',
-              background: 'var(--accent-blue-light)',
-              color: 'var(--accent-blue)',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = '#dde4ff'}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--accent-blue-light)'}
-          >
-            Lihat Semua
-            <ArrowUpRight size={13} />
-          </button>
+
+          {/* Table */}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#fafafa' }}>
+                  {['ID', 'Pemilik', 'Hewan', 'Spesies', 'Jenis Layanan', 'Waktu', 'Status'].map(col => (
+                    <th key={col} style={{
+                      padding: '10px 16px',
+                      textAlign: 'left',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'var(--text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      borderBottom: '1px solid var(--border-color)',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {col}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {recentAppointments.map((apt, i) => (
+                  <tr
+                    key={apt.id}
+                    style={{
+                      borderBottom: i < recentAppointments.length - 1 ? '1px solid var(--border-color)' : 'none',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#fafbff'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                      {apt.id}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                      {apt.pemilik}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>
+                      {apt.hewan}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                      {apt.spesies}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                      {apt.jenis}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                      {apt.waktu} WIB
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <StatusBadge status={apt.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Table */}
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#fafafa' }}>
-                {['ID', 'Pemilik', 'Hewan', 'Spesies', 'Jenis Layanan', 'Waktu', 'Status'].map(col => (
-                  <th key={col} style={{
-                    padding: '10px 16px',
-                    textAlign: 'left',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid var(--border-color)',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {recentAppointments.map((apt, i) => (
-                <tr
-                  key={apt.id}
-                  style={{
-                    borderBottom: i < recentAppointments.length - 1 ? '1px solid var(--border-color)' : 'none',
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#fafbff'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                    {apt.id}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                    {apt.pemilik}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>
-                    {apt.hewan}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
-                    {apt.spesies}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-secondary)' }}>
-                    {apt.jenis}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                    {apt.waktu} WIB
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <StatusBadge status={apt.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Activity Logs Card */}
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: 'var(--shadow-sm)',
+          border: '1px solid var(--border-color)',
+          padding: '20px 22px',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 400,
+          boxSizing: 'border-box',
+        }}>
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+              Log Aktivitas Terbaru
+            </h3>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+              Aktivitas guest & member real-time
+            </p>
+          </div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            overflowY: 'auto',
+            maxHeight: 340,
+            paddingRight: 4,
+          }}>
+            {logs.map((log) => (
+              <div
+                key={log.id}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #f1f5f9',
+                  background: '#fafbfc',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  fontSize: 13,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{log.actor_name}</span>
+                    <ActorBadge type={log.actor_type} />
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatTimeAgo(log.created_at)}</span>
+                </div>
+                <div style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                  {log.action}
+                </div>
+                {log.metadata && Object.keys(log.metadata).length > 0 && (
+                  <div style={{ fontSize: 11, color: '#64748b', background: '#f8fafc', padding: '4px 8px', borderRadius: 4, marginTop: 2, fontFamily: 'monospace' }}>
+                    {Object.entries(log.metadata).map(([key, val]) => `${key}: ${val}`).join(', ')}
+                  </div>
+                )}
+              </div>
+            ))}
+            {logs.length === 0 && (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                Belum ada aktivitas tercatat.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

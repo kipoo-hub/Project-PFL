@@ -2,7 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Loading from './components/Loading';
 
-// Layouts (tidak di-lazy load karena sebagai pembungkus utama)
+// Layouts
 import MainLayout from './layouts/MainLayout';
 import AuthLayout from './layouts/AuthLayout';
 import MemberLayout from './layouts/MemberLayout';
@@ -11,9 +11,9 @@ import MemberLayout from './layouts/MemberLayout';
 import { MemberAuthProvider } from './context/MemberAuthContext';
 
 // Route Guards
-import { MemberProtectedRoute, MemberGuestRoute } from './components/MemberRoute';
+import { AdminProtectedRoute, MemberProtectedRoute, GuestRoute } from './components/MemberRoute';
 
-// Pages — lazy loaded (hanya di-load saat dibutuhkan)
+// Pages — lazy loaded
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Pasien = lazy(() => import('./pages/Pasien'));
 const JadwalTemu = lazy(() => import('./pages/JadwalTemu'));
@@ -33,17 +33,12 @@ const Leads = lazy(() => import('./pages/Leads'));
 const Segmentasi = lazy(() => import('./pages/Segmentasi'));
 const Blast = lazy(() => import('./pages/Blast'));
 
-// Auth pages — lazy loaded
-const GuestLogin = lazy(() => import('./pages/auth/guest/Login'));
-const GuestRegister = lazy(() => import('./pages/auth/guest/Register'));
-const GuestForgot = lazy(() => import('./pages/auth/guest/Forgot'));
-const AdminLogin = lazy(() => import('./pages/auth/admin/Login'));
-const AdminRegister = lazy(() => import('./pages/auth/admin/Register'));
+// Auth pages
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
+const MemberRegister = lazy(() => import('./pages/member/auth/MemberRegister'));
 const MembersManagement = lazy(() => import('./pages/admin/MembersManagement'));
 
-// Member pages — lazy loaded
-const MemberLogin    = lazy(() => import('./pages/member/auth/MemberLogin'));
-const MemberRegister = lazy(() => import('./pages/member/auth/MemberRegister'));
+// Member pages
 const MemberDashboard = lazy(() => import('./pages/member/MemberDashboard'));
 const MemberTickets = lazy(() => import('./pages/member/MemberTickets'));
 const MemberQueue = lazy(() => import('./pages/member/MemberQueue'));
@@ -56,7 +51,7 @@ const MemberChat = lazy(() => import('./pages/member/MemberChat'));
 const MemberBills = lazy(() => import('./pages/member/MemberBills'));
 const MemberProfile = lazy(() => import('./pages/member/MemberProfile'));
 
-// Admin CRM Stage 3 pages — lazy loaded
+// Admin CRM Stage 3 pages
 const Tickets = lazy(() => import('./pages/Tickets'));
 const Queue = lazy(() => import('./pages/Queue'));
 const QueueDisplay = lazy(() => import('./pages/QueueDisplay'));
@@ -69,20 +64,31 @@ function App() {
     <MemberAuthProvider>
       <Suspense fallback={<Loading />}>
         <Routes>
-          {/* ── Public route ─────────────────────────────────── */}
-          <Route path="/guest" element={<GuestPage />} />
+          {/* ── Public routes ─────────────────────────────────── */}
+          <Route path="/" element={<GuestPage />} />
           <Route path="/antrian/display" element={<QueueDisplay />} />
 
-          {/* ── Member auth routes (block if already logged in) ── */}
-          <Route element={<MemberGuestRoute />}>
-            <Route path="/member/login"    element={<MemberLogin />} />
-            <Route path="/member/register" element={<MemberRegister />} />
+          {/* ── Guest redirects to unified login ──────────────── */}
+          <Route path="/guest" element={<Navigate to="/" replace />} />
+          <Route path="/member/login" element={<Navigate to="/login" replace />} />
+          <Route path="/guest/login" element={<Navigate to="/login" replace />} />
+          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+          <Route path="/member/register" element={<Navigate to="/register" replace />} />
+          <Route path="/guest/register" element={<Navigate to="/register" replace />} />
+          <Route path="/admin/register" element={<Navigate to="/login" replace />} />
+
+          {/* ── Guest auth routes (block if already logged in) ── */}
+          <Route element={<GuestRoute />}>
+            <Route element={<AuthLayout />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<MemberRegister />} />
+            </Route>
           </Route>
 
           {/* ── Member protected routes ─────────────────────── */}
           <Route element={<MemberProtectedRoute />}>
             <Route element={<MemberLayout />}>
-              <Route path="/dashboard" element={<MemberDashboard />} />
+              <Route path="/member" element={<MemberDashboard />} />
               <Route path="/member/tiket"     element={<MemberTickets />} />
               <Route path="/member/antrian"   element={<MemberQueue />} />
               <Route path="/member/hewan"          element={<MemberPets />} />
@@ -96,41 +102,33 @@ function App() {
             </Route>
           </Route>
 
-          {/* ── Dashboard routes (MainLayout) ─────────────────── */}
-          <Route element={<MainLayout />}>
-            <Route path="/"           element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="/admin/dashboard" element={<Dashboard />} />
-            <Route path="/pasien"     element={<Pasien />} />
-            <Route path="/jadwal"     element={<JadwalTemu />} />
-            <Route path="/analitik"   element={<Analitik />} />
-            <Route path="/pengaturan" element={<Pengaturan />} />
-            <Route path="/components" element={<Components />} />
-            <Route path="/profile"    element={<Profile />} />
-            {/* CRM Routes */}
-            <Route path="/admin/members" element={<MembersManagement />} />
-            <Route path="/marketing"  element={<Marketing />} />
-            <Route path="/sales"      element={<Sales />} />
-            <Route path="/service"    element={<Service />} />
-            <Route path="/reminder"   element={<Reminder />} />
-            <Route path="/followup"   element={<FollowUp />} />
-            <Route path="/pipeline"   element={<PipelineMember />} />
-            <Route path="/leads"      element={<Leads />} />
-            <Route path="/segmentasi" element={<Segmentasi />} />
-            <Route path="/blast"      element={<Blast />} />
-            <Route path="/tiket"      element={<Tickets />} />
-            <Route path="/sla"        element={<SLAMonitor />} />
-            <Route path="/antrian"    element={<Queue />} />
-            <Route path="*"           element={<NotFound />} />
+          {/* ── Admin protected routes (MainLayout) ──────────── */}
+          <Route element={<AdminProtectedRoute />}>
+            <Route element={<MainLayout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/pasien"     element={<Pasien />} />
+              <Route path="/jadwal"     element={<JadwalTemu />} />
+              <Route path="/analitik"   element={<Analitik />} />
+              <Route path="/pengaturan" element={<Pengaturan />} />
+              <Route path="/components" element={<Components />} />
+              <Route path="/profile"    element={<Profile />} />
+              <Route path="/admin/members" element={<MembersManagement />} />
+              <Route path="/marketing"  element={<Marketing />} />
+              <Route path="/sales"      element={<Sales />} />
+              <Route path="/service"    element={<Service />} />
+              <Route path="/reminder"   element={<Reminder />} />
+              <Route path="/followup"   element={<FollowUp />} />
+              <Route path="/pipeline"   element={<PipelineMember />} />
+              <Route path="/leads"      element={<Leads />} />
+              <Route path="/segmentasi" element={<Segmentasi />} />
+              <Route path="/blast"      element={<Blast />} />
+              <Route path="/tiket"      element={<Tickets />} />
+              <Route path="/sla"        element={<SLAMonitor />} />
+              <Route path="/antrian"    element={<Queue />} />
+            </Route>
           </Route>
 
-          {/* ── Guest & Admin auth routes ────────────────────── */}
-          <Route element={<AuthLayout />}>
-            <Route path="/guest/login"    element={<GuestLogin />} />
-            <Route path="/guest/register" element={<GuestRegister />} />
-            <Route path="/guest/forgot"   element={<GuestForgot />} />
-            <Route path="/admin/login"    element={<AdminLogin />} />
-            <Route path="/admin/register" element={<AdminRegister />} />
-          </Route>
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
     </MemberAuthProvider>

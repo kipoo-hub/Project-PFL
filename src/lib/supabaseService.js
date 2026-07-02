@@ -3,6 +3,7 @@
 // All CRM data operations through Supabase instead of localStorage
 // ─────────────────────────────────────────────────────────────────────────────
 import { supabase } from './supabase';
+import { logActivity } from './logActivity';
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 const handleError = (context, error) => {
@@ -335,6 +336,7 @@ export const ticketService = {
       sender_name: data.ownerName,
       message: data.description,
     }]);
+    await logActivity('Membuat tiket bantuan', { title: data.title, category: data.category });
     return ticket;
   },
 
@@ -444,6 +446,7 @@ export const queueService = {
       .select()
       .single();
     if (error) { handleError('queueService.add', error); return null; }
+    await logActivity('Mengambil nomor antrian', { service: data.service, petName: data.petName });
     return result;
   },
 
@@ -852,6 +855,7 @@ export const jadwalService = {
       .select()
       .single();
     if (error) { handleError('jadwalService.create', error); return null; }
+    await logActivity('Membuat janji temu', { service: data.layanan || data.service, doctor: data.dokter || data.doctor, date: data.tanggal || data.date });
     return result;
   },
 
@@ -946,6 +950,9 @@ export const chatService = {
       .insert([{ chat_id: chatId, sender, text }]);
     if (error) { handleError('chatService.sendMessage', error); return false; }
 
+    if (sender === 'member') {
+      await logActivity('Mengirim pesan konsultasi', { chatId, snippet: text.substring(0, 40) });
+    }
     if (sender === 'doctor') {
       await supabase.rpc('increment', { table: 'chats', col: 'unread_count', row_id: chatId }).catch(() => {
         supabase.from('chats').select('unread_count').eq('id', chatId).single().then(({ data }) => {
@@ -1009,6 +1016,7 @@ export const billService = {
   updateStatus: async (id, status) => {
     const { error } = await supabase.from('bills').update({ status }).eq('id', id);
     if (error) { handleError('billService.updateStatus', error); return false; }
+    await logActivity('Memperbarui status pembayaran tagihan', { billId: id, status });
     return true;
   },
 };
@@ -1019,9 +1027,9 @@ export const billService = {
 export const memberProfileService = {
   getById: async (id) => {
     const { data, error } = await supabase
-      .from('members')
+      .from('profiles')
       .select('*')
-      .eq('id', id)
+      .eq('user_id', id)
       .single();
     if (error) { handleError('memberProfileService.getById', error); return null; }
     return data;
@@ -1029,19 +1037,15 @@ export const memberProfileService = {
 
   update: async (id, data) => {
     const { error } = await supabase
-      .from('members')
+      .from('profiles')
       .update({ name: data.name, email: data.email })
-      .eq('id', id);
+      .eq('user_id', id);
     if (error) { handleError('memberProfileService.update', error); return false; }
     return true;
   },
 
   changePassword: async (id, newPassword) => {
-    const { error } = await supabase
-      .from('members')
-      .update({ password: newPassword })
-      .eq('id', id);
-    if (error) { handleError('memberProfileService.changePassword', error); return false; }
+    // Password updates are managed directly via supabase.auth.updateUser in the UI
     return true;
   },
 };
@@ -1059,7 +1063,7 @@ export const dashboardService = {
       { data: newTickets },
       { data: waitingQueues },
     ] = await Promise.all([
-      supabase.from('members').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'member'),
       supabase.from('pasien').select('*', { count: 'exact', head: true }),
       supabase.from('jadwal_temu').select('id, pet_name, pemilik, spesies, layanan, waktu, status').eq('tanggal', new Date().toISOString().split('T')[0]).order('waktu'),
       supabase.from('vaksin').select('id').eq('status', 'Belum Diingatkan').lte('due_date', new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]),

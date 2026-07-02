@@ -52,7 +52,7 @@ const PetSVG = () => (
 
 export default function MemberRegister() {
   const navigate = useNavigate();
-  const { register } = useMemberAuth();
+  const { signUp } = useMemberAuth();
 
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirm: '', terms: false });
   const [errors, setErrors] = useState({});
@@ -84,42 +84,23 @@ export default function MemberRegister() {
 
     setLoading(true);
     try {
-      // 1. Check if email exists
-      const { data: existing, error: checkError } = await supabase
-        .from('members')
-        .select('id')
-        .eq('email', form.email);
-        
-      if (existing && existing.length > 0) {
-        setErrors({ email: 'Email sudah terdaftar' });
-        setLoading(false);
-        return;
-      }
+      // 1. Sign up using Supabase Auth (which triggers auto-creation of a profile in database)
+      const data = await signUp(form.name, form.email, form.password, 'member');
+      const user = data?.user;
 
-      // 2. Insert into members table
-      const { data: newMember, error: insertError } = await supabase
-        .from('members')
-        .insert([{
-          name: form.name,
-          email: form.email,
-          password: form.password,
-        }])
-        .select()
-        .single();
-
-      if (insertError || !newMember) {
+      if (!user) {
         setErrors({ auth: 'Gagal membuat akun member' });
         setLoading(false);
         return;
       }
 
-      // 3. Auto-insert to pipeline_members table for CRM pipeline
-      await supabase
+      // 2. Auto-insert to pipeline_members table for CRM pipeline
+      const { error: pipelineError } = await supabase
         .from('pipeline_members')
         .insert([{
-          member_id: newMember.id,
-          name: newMember.name,
-          email: newMember.email,
+          member_id: user.id,
+          name: form.name,
+          email: form.email,
           phone: form.phone,
           stage: 'BARU',
           visits: 0,
@@ -127,20 +108,15 @@ export default function MemberRegister() {
           pets: [],
         }]);
 
-      // 4. Log in the user in our AuthContext
-      register({
-        id: newMember.id,
-        name: newMember.name,
-        email: newMember.email,
-        role: 'member',
-        created_at: newMember.created_at
-      });
+      if (pipelineError) {
+        console.error('Error inserting into pipeline_members:', pipelineError);
+      }
 
       setSuccess(`Selamat datang, ${form.name.split(' ')[0]}! Akun member kamu berhasil dibuat.`);
-      setTimeout(() => navigate('/dashboard'), 1800);
+      setTimeout(() => navigate('/member'), 1800);
     } catch (err) {
       console.error(err);
-      setErrors({ auth: 'Terjadi kesalahan sistem' });
+      setErrors({ auth: err.message || 'Terjadi kesalahan sistem' });
     } finally {
       setLoading(false);
     }

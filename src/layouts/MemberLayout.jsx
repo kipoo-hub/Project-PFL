@@ -5,7 +5,7 @@ import { vaccineService, jadwalService, chatService, ticketService } from '../li
 import '../pages/member/member-dashboard.css';
 
 const NAV_ITEMS_TEMPLATE = [
-  { id: 'dashboard', icon: '🏠', label: 'Dashboard', path: '/dashboard' },
+  { id: 'dashboard', icon: '🏠', label: 'Dashboard', path: '/member' },
   { id: 'pets', icon: '🐾', label: 'Hewan Peliharaan', path: '/member/hewan' },
   { id: 'appointments', icon: '📅', label: 'Janji Temu', path: '/member/janji' },
   { id: 'vaccines', icon: '💉', label: 'Jadwal Vaksinasi', path: '/member/vaksin' },
@@ -106,14 +106,14 @@ export default function MemberLayout() {
 
   const handleLogout = () => {
     logout();
-    navigate('/member/login', { replace: true });
+    navigate('/login', { replace: true });
   };
 
   const isItemActive = (item) => {
     if (item.id === 'dashboard') {
-      return location.pathname === '/dashboard';
+      return location.pathname === '/member';
     }
-    return location.pathname.startsWith(item.path) && item.id !== 'dashboard' && item.path !== '/dashboard';
+    return location.pathname.startsWith(item.path) && item.id !== 'dashboard' && item.path !== '/member';
   };
 
   const navItems = NAV_ITEMS_TEMPLATE.map(item => {

@@ -10,7 +10,7 @@ export default function MembersManagement() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ name: '', email: '' });
 
   useEffect(() => {
     fetchMembers();
@@ -18,15 +18,19 @@ export default function MembersManagement() {
 
   const fetchMembers = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('members').select('*').order('id', { ascending: false });
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'member')
+      .order('created_at', { ascending: false });
     if (error) setError(error.message);
     else setMembers(data);
     setLoading(false);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Yakin ingin menghapus member ini?')) return;
-    const { error } = await supabase.from('members').delete().eq('id', id);
+    if (!window.confirm('Yakin ingin menghapus profil member ini? (Aksi ini tidak dapat dibatalkan)')) return;
+    const { error } = await supabase.from('profiles').delete().eq('id', id);
     if (error) alert(error.message);
     else fetchMembers();
   };
@@ -34,12 +38,11 @@ export default function MembersManagement() {
   const handleOpenModal = (member = null) => {
     if (member) {
       setEditingMember(member);
-      setFormData({ name: member.name || '', email: member.email || '', password: member.password || '' });
+      setFormData({ name: member.name || '', email: member.email || '' });
+      setIsModalOpen(true);
     } else {
-      setEditingMember(null);
-      setFormData({ name: '', email: '', password: '' });
+      alert('Pendaftaran member baru dilakukan secara mandiri oleh member melalui halaman pendaftaran (/register).');
     }
-    setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
@@ -52,16 +55,15 @@ export default function MembersManagement() {
     setLoading(true);
     
     if (editingMember) {
-      // Update
-      const { error } = await supabase.from('members').update(formData).eq('id', editingMember.id);
-      if (error) alert(error.message);
-      else {
-        handleCloseModal();
-        fetchMembers();
-      }
-    } else {
-      // Create
-      const { error } = await supabase.from('members').insert([formData]);
+      // Update profile info
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: formData.name,
+          email: formData.email
+        })
+        .eq('id', editingMember.id);
+
       if (error) alert(error.message);
       else {
         handleCloseModal();
@@ -71,9 +73,20 @@ export default function MembersManagement() {
     setLoading(false);
   };
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <div style={{ padding: 24, flex: 1, overflowY: 'auto' }}>
-      <PageHeader title="Kelola Member" subtitle="Data member dari Supabase" />
+      <PageHeader title="Kelola Member" subtitle="Data member terdaftar dari tabel profiles" />
       
       <div style={{ background: 'white', padding: 20, borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -94,9 +107,9 @@ export default function MembersManagement() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
-                <th style={{ padding: 12 }}>Name</th>
+                <th style={{ padding: 12 }}>Nama</th>
                 <th style={{ padding: 12 }}>Email</th>
-                <th style={{ padding: 12 }}>Password</th>
+                <th style={{ padding: 12 }}>Tanggal Bergabung</th>
                 <th style={{ padding: 12, width: 100 }}>Aksi</th>
               </tr>
             </thead>
@@ -105,7 +118,7 @@ export default function MembersManagement() {
                 <tr key={member.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                   <td style={{ padding: 12 }}>{member.name}</td>
                   <td style={{ padding: 12 }}>{member.email}</td>
-                  <td style={{ padding: 12, color: '#9ca3af' }}>{member.password ? '••••••••' : '-'}</td>
+                  <td style={{ padding: 12 }}>{formatDate(member.created_at)}</td>
                   <td style={{ padding: 12 }}>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => handleOpenModal(member)} style={{ border: 'none', background: 'none', color: '#3b5bdb', cursor: 'pointer' }}><Edit2 size={16}/></button>
@@ -126,7 +139,7 @@ export default function MembersManagement() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
           <div style={{ background: 'white', padding: 24, borderRadius: 12, width: 400 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ margin: 0 }}>{editingMember ? 'Edit Member' : 'Tambah Member'}</h3>
+              <h3 style={{ margin: 0 }}>Edit Profil Member</h3>
               <button onClick={handleCloseModal} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20}/></button>
             </div>
             
@@ -138,10 +151,6 @@ export default function MembersManagement() {
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600 }}>Email</label>
                 <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, boxSizing: 'border-box' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600 }}>Password</label>
-                <input required={!editingMember} type="text" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder={editingMember ? "Kosongkan jika tidak ingin diubah" : ""} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 6, boxSizing: 'border-box' }} />
               </div>
               <button type="submit" disabled={loading} style={{ background: '#3b5bdb', color: 'white', border: 'none', padding: 10, borderRadius: 6, fontWeight: 600, cursor: 'pointer', marginTop: 10 }}>
                 {loading ? 'Menyimpan...' : 'Simpan'}
