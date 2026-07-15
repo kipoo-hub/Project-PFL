@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../../context/MemberAuthContext';
 import { supabase } from '../../lib/supabase';
-import { jadwalService, queueService, billService } from '../../lib/supabaseService';
+import { jadwalService, queueService, billService, pasienService, ticketService } from '../../lib/supabaseService';
 import GuestNavbar from '../guest/components/GuestNavbar';
 import GuestFooter from '../guest/components/GuestFooter';
 import '../guest/guest.css';
@@ -136,6 +136,55 @@ export default function MemberMembership() {
   const [activeQueue, setActiveQueue] = useState(null);
   const [loading, setLoading]         = useState(true);
 
+  // New States for QuickActions
+  const [pets, setPets] = useState([]);
+  const [allBills, setAllBills] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [isCreatingTicket, setIsCreatingTicket] = useState(false);
+  const [openQueueModal, setOpenQueueModal] = useState(false);
+  const [openTicketModal, setOpenTicketModal] = useState(false);
+  const [openBillsModal, setOpenBillsModal] = useState(false);
+  const [selectedBill, setSelectedBill] = useState(null);
+
+  // Modal forms
+  const [queueForm, setQueueForm] = useState({ petName: '', service: 'Pemeriksaan Umum' });
+  const [ticketForm, setTicketForm] = useState({ title: '', petName: '', category: 'Medis', urgency: 'Sedang', description: '' });
+  const [replyMessage, setReplyMessage] = useState('');
+
+  const fetchTickets = async () => {
+    const memberUser = JSON.parse(localStorage.getItem('memberUser') || '{}');
+    const email = memberUser.email || member?.email;
+    if (!email) return;
+    try {
+      const ticketsData = await ticketService.getByEmail(email);
+      setTickets(ticketsData || []);
+      if (selectedTicket) {
+        const updated = (ticketsData || []).find(t => t.id === selectedTicket.id);
+        if (updated) setSelectedTicket(updated);
+      }
+    } catch (e) {
+      console.error('Error fetching tickets:', e);
+    }
+  };
+
+  const fetchQueuesAndBills = async () => {
+    if (!member?.id) return;
+    const memberUser = JSON.parse(localStorage.getItem('memberUser') || '{}');
+    const email = memberUser.email || member.email;
+    try {
+      const [queues, billsData] = await Promise.all([
+        queueService.getByEmail(email),
+        billService.getByMemberId(member.id)
+      ]);
+      setActiveQueue((queues || []).find(q => q.status === 'Menunggu' || q.status === 'Dipanggil') || null);
+      setBills((billsData || []).filter(b => b.status === 'Belum Dibayar').slice(0, 3));
+      setAllBills(billsData || []);
+    } catch (e) {
+      console.error('Error fetching queues and bills:', e);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       if (!member?.id) return;
@@ -158,9 +207,22 @@ export default function MemberMembership() {
         const email = memberUser.email || member.email;
         const billsData = await billService.getByMemberId(member.id);
         setBills((billsData || []).filter(b => b.status === 'Belum Dibayar').slice(0, 3));
+        setAllBills(billsData || []);
 
         const queues = await queueService.getByEmail(email);
         setActiveQueue((queues || []).find(q => q.status === 'Menunggu' || q.status === 'Dipanggil') || null);
+
+        // Load pets
+        const petsData = await pasienService.getByMemberId(member.id);
+        setPets(petsData || []);
+        if (petsData?.length > 0) {
+          setQueueForm(prev => ({ ...prev, petName: petsData[0].nama }));
+          setTicketForm(prev => ({ ...prev, petName: petsData[0].nama }));
+        }
+
+        // Load tickets
+        const ticketsData = await ticketService.getByEmail(email);
+        setTickets(ticketsData || []);
       } catch (err) {
         console.error('Error fetching membership data:', err);
       } finally {
@@ -189,6 +251,89 @@ export default function MemberMembership() {
   const name  = getName();
   const email = getEmail();
 
+  const handleCreateQueue = async (e) => {
+    e.preventDefault();
+    if (!queueForm.petName) {
+      alert('Pilih hewan peliharaan terlebih dahulu.');
+      return;
+    }
+    const memberUser = JSON.parse(localStorage.getItem('memberUser') || '{}');
+    const emailStr = memberUser.email || member?.email || email;
+    try {
+      setLoading(true);
+      await queueService.add({
+        ownerName: name,
+        email: emailStr,
+        petName: queueForm.petName,
+        service: queueForm.service,
+        type: 'Datang Sekarang'
+      });
+      setOpenQueueModal(false);
+      await fetchQueuesAndBills();
+      alert('Nomor antrian berhasil diambil!');
+    } catch (err) {
+      console.error('Error creating queue:', err);
+      alert('Gagal mengambil antrian.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateTicket = async (e) => {
+    e.preventDefault();
+    if (!ticketForm.title.trim() || !ticketForm.description.trim()) {
+      alert('Harap isi subjek dan deskripsi keluhan.');
+      return;
+    }
+    const memberUser = JSON.parse(localStorage.getItem('memberUser') || '{}');
+    const emailStr = memberUser.email || member?.email || email;
+    try {
+      setLoading(true);
+      const newTicket = await ticketService.create({
+        petName: ticketForm.petName || 'Tidak Ada',
+        ownerName: name,
+        email: emailStr,
+        category: ticketForm.category,
+        title: ticketForm.title,
+        urgency: ticketForm.urgency,
+        description: ticketForm.description
+      });
+      if (newTicket) {
+        setTicketForm({ title: '', petName: pets[0]?.nama || '', category: 'Medis', urgency: 'Sedang', description: '' });
+        setIsCreatingTicket(false);
+        await fetchTickets();
+        alert('Tiket bantuan berhasil dibuat!');
+      }
+    } catch (err) {
+      console.error('Error creating ticket:', err);
+      alert('Gagal membuat tiket keluhan.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendTicketReply = async (e) => {
+    e.preventDefault();
+    if (!replyMessage.trim() || !selectedTicket) return;
+    try {
+      const success = await ticketService.reply(
+        selectedTicket.id,
+        replyMessage,
+        'member',
+        name
+      );
+      if (success) {
+        setReplyMessage('');
+        await fetchTickets();
+      } else {
+        alert('Gagal mengirim pesan.');
+      }
+    } catch (err) {
+      console.error('Error replying to ticket:', err);
+      alert('Gagal membalas tiket.');
+    }
+  };
+
   if (loading) return (
     <div className="guest-page">
       <GuestNavbar />
@@ -206,6 +351,12 @@ export default function MemberMembership() {
   return (
     <div className="guest-page">
       <GuestNavbar />
+      <style>{`
+        @keyframes scaleUp {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
 
       <main style={{ paddingTop: 96, paddingBottom: 80, background: '#f4f7fc', minHeight: '60vh' }}>
         <div className="guest-container">
@@ -281,12 +432,12 @@ export default function MemberMembership() {
               gridTemplateColumns: 'repeat(3, 1fr)',
               gap: 12,
             }}>
-              <QuickAction icon="📅" label="Buat Janji Temu"     desc="Booking layanan dokter hewan"      onClick={() => navigate('/member/janji')}   color="#3b5bdb" />
-              <QuickAction icon="🔢" label="Ambil Antrian"        desc="Daftar antrian kunjungan langsung" onClick={() => navigate('/member/antrian')} color="#16a34a" />
-              <QuickAction icon="🐾" label="Tambah Hewan"         desc="Daftarkan hewan peliharaan baru"   onClick={() => navigate('/member/hewan')}   color="#f76707" />
+              <QuickAction icon="📅" label="Buat Janji Temu"     desc="Booking layanan dokter hewan"      onClick={() => navigate('/member/janji', { state: { openBookingModal: true } })}   color="#3b5bdb" />
+              <QuickAction icon="🔢" label="Ambil Antrian"        desc="Daftar antrian kunjungan langsung" onClick={() => setOpenQueueModal(true)} color="#16a34a" />
+              <QuickAction icon="🐾" label="Tambah Hewan"         desc="Daftarkan hewan peliharaan baru"   onClick={() => navigate('/member/hewan', { state: { openAddModal: true } })}   color="#f76707" />
               <QuickAction icon="💬" label="Chat Dokter"          desc="Konsultasi via chat langsung"       onClick={() => navigate('/member/chat')}    color="#7048e8" />
-              <QuickAction icon="🎫" label="Buat Tiket Keluhan"   desc="Laporkan masalah atau komplain"    onClick={() => navigate('/member/tiket')}   color="#e03131" />
-              <QuickAction icon="🧾" label="Lihat Tagihan"        desc="Cek riwayat & status pembayaran"   onClick={() => navigate('/member/tagihan')} color="#0ca678" />
+              <QuickAction icon="🎫" label="Buat Tiket Keluhan"   desc="Laporkan masalah atau komplain"    onClick={() => { setOpenTicketModal(true); setIsCreatingTicket(true); }}   color="#e03131" />
+              <QuickAction icon="🧾" label="Lihat Tagihan"        desc="Cek riwayat & status pembayaran"   onClick={() => setOpenBillsModal(true)} color="#0ca678" />
             </div>
           </Card>
 
@@ -488,7 +639,7 @@ export default function MemberMembership() {
 
               {/* Pending Bills */}
               <Card>
-                <SectionTitle action={<PillBtn label="Lihat Semua" onClick={() => navigate('/member/tagihan')} color="#0ca678" bg="#f0fdf4" border="#a7f3d0" />}>
+                <SectionTitle action={<PillBtn label="Lihat Semua" onClick={() => setOpenBillsModal(true)} color="#0ca678" bg="#f0fdf4" border="#a7f3d0" />}>
                   🧾 Tagihan Belum Dibayar
                 </SectionTitle>
                 {bills.length === 0 ? (
@@ -496,11 +647,18 @@ export default function MemberMembership() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {bills.map((bill) => (
-                      <div key={bill.id} style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '12px 16px', borderRadius: 12,
-                        background: '#fff7ed', border: '1px solid #fed7aa',
-                      }}>
+                      <div 
+                        key={bill.id} 
+                        onClick={() => { setSelectedBill(bill); setOpenBillsModal(true); }}
+                        style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '12px 16px', borderRadius: 12,
+                          background: '#fff7ed', border: '1px solid #fed7aa',
+                          cursor: 'pointer', transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#ffedd5'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#fff7ed'}
+                      >
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {bill.service}
@@ -595,6 +753,425 @@ export default function MemberMembership() {
 
         </div>
       </main>
+
+      {/* ── Modal Ambil Antrian ── */}
+      {openQueueModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={() => setOpenQueueModal(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(8px)' }} />
+          <div style={{ position: 'relative', zIndex: 10, background: 'white', borderRadius: 20, width: '100%', maxWidth: 460, padding: 28, boxShadow: '0 20px 50px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0', animation: 'scaleUp 0.3s ease' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: '1.5rem' }}>🔢</span>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Ambil Nomor Antrian</h3>
+              </div>
+              <button onClick={() => setOpenQueueModal(false)} style={{ border: 'none', background: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+            </div>
+            
+            <form onSubmit={handleCreateQueue} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: 6 }}>Pilih Hewan Peliharaan</label>
+                {pets.length === 0 ? (
+                  <div style={{ padding: '12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, fontSize: '0.78rem', color: '#b45309' }}>
+                    Belum ada hewan terdaftar. Silakan tambah hewan terlebih dahulu.
+                  </div>
+                ) : (
+                  <select 
+                    value={queueForm.petName} 
+                    onChange={e => setQueueForm(prev => ({ ...prev, petName: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: '0.85rem', outline: 'none' }}
+                  >
+                    {pets.map(p => (
+                      <option key={p.id} value={p.nama}>{p.nama} ({p.spesies})</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: 6 }}>Jenis Layanan</label>
+                <select 
+                  value={queueForm.service} 
+                  onChange={e => setQueueForm(prev => ({ ...prev, service: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: '0.85rem', outline: 'none' }}
+                >
+                  <option value="Pemeriksaan Umum">🩺 Pemeriksaan Umum</option>
+                  <option value="Vaksinasi">💉 Vaksinasi</option>
+                  <option value="Grooming">✂️ Grooming</option>
+                  <option value="Tindakan Medis / Bedah">🩹 Tindakan Medis / Bedah</option>
+                  <option value="Penitipan Hewan">Penitipan Hewan</option>
+                </select>
+              </div>
+
+              <div style={{ padding: '12px 14px', background: '#eff6ff', borderRadius: 12, border: '1px solid #bfdbfe', fontSize: '0.78rem', color: '#1e3a8a', lineHeight: 1.5 }}>
+                ℹ️ <strong>Informasi:</strong> Antrian ini bersifat <em>real-time</em> ("Datang Sekarang"). Mohon segera menuju klinik setelah mengambil nomor antrian.
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={pets.length === 0} 
+                style={{ 
+                  width: '100%', padding: '12px', background: pets.length === 0 ? '#cbd5e1' : '#16a34a', 
+                  color: 'white', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: '0.88rem', 
+                  cursor: pets.length === 0 ? 'not-allowed' : 'pointer', transition: 'background 0.2s',
+                  boxShadow: pets.length === 0 ? 'none' : '0 4px 14px rgba(22,163,74,0.3)' 
+                }}
+              >
+                Konfirmasi & Ambil Nomor Antrian
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Tiket Keluhan ── */}
+      {openTicketModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={() => setOpenTicketModal(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(8px)' }} />
+          <div style={{ position: 'relative', zIndex: 10, background: 'white', borderRadius: 20, width: '100%', maxWidth: 840, height: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0', overflow: 'hidden', animation: 'scaleUp 0.3s ease' }}>
+            
+            {/* Header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: '1.5rem' }}>🎫</span>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Pusat Bantuan & Tiket Keluhan</h3>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>Hubungi customer service dan sampaikan kendala Anda.</div>
+                </div>
+              </div>
+              <button onClick={() => setOpenTicketModal(false)} style={{ border: 'none', background: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+            </div>
+
+            {/* Split Content */}
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              
+              {/* Left Column: Ticket List */}
+              <div style={{ width: 280, borderRight: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                <div style={{ padding: 14, borderBottom: '1px solid #edf2f7' }}>
+                  <button 
+                    onClick={() => { setIsCreatingTicket(true); setSelectedTicket(null); }}
+                    style={{ width: '100%', padding: '9px', background: '#e03131', color: 'white', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(224,49,49,0.2)' }}
+                  >
+                    ＋ Buat Tiket Baru
+                  </button>
+                </div>
+                
+                <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {tickets.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '30px 10px', color: '#94a3b8', fontSize: '0.78rem' }}>
+                      Belum ada riwayat tiket bantuan.
+                    </div>
+                  ) : (
+                    tickets.map(t => {
+                      const isActive = selectedTicket?.id === t.id && !isCreatingTicket;
+                      const statusColors = {
+                        'Baru': { bg: '#e0f2fe', color: '#0369a1' },
+                        'Dalam Proses': { bg: '#fef3c7', color: '#d97706' },
+                        'Selesai': { bg: '#dcfce7', color: '#15803d' }
+                      }[t.status] || { bg: '#f1f5f9', color: '#475569' };
+
+                      return (
+                        <div 
+                          key={t.id} 
+                          onClick={() => { setSelectedTicket(t); setIsCreatingTicket(false); }}
+                          style={{ 
+                            padding: 12, borderRadius: 12, border: '1px solid #edf2f7', cursor: 'pointer',
+                            background: isActive ? 'white' : 'transparent', 
+                            boxShadow: isActive ? '0 4px 10px rgba(0,0,0,0.04)' : 'none',
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#94a3b8' }}>#{t.id.slice(0, 8)}</span>
+                            <span style={{ fontSize: '0.6rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: statusColors.bg, color: statusColors.color }}>{t.status}</span>
+                          </div>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 2 }}>{t.title}</div>
+                          <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Kategori: {t.category} · {t.createdAt}</div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Detail or Create Form */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'white' }}>
+                {isCreatingTicket ? (
+                  /* Form Pembuatan Tiket Baru */
+                  <form onSubmit={handleCreateTicket} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', flex: 1 }}>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1e293b', margin: '0 0 4px 0' }}>Kirim Tiket Keluhan Baru</h4>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: 5 }}>Hewan Terkait</label>
+                        <select 
+                          value={ticketForm.petName} 
+                          onChange={e => setTicketForm(prev => ({ ...prev, petName: e.target.value }))}
+                          style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: '0.8rem', outline: 'none' }}
+                        >
+                          <option value="Tidak Ada">Tidak Ada Hewan</option>
+                          {pets.map(p => <option key={p.id} value={p.nama}>{p.nama}</option>)}
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: 5 }}>Kategori Masalah</label>
+                        <select 
+                          value={ticketForm.category} 
+                          onChange={e => setTicketForm(prev => ({ ...prev, category: e.target.value }))}
+                          style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: '0.8rem', outline: 'none' }}
+                        >
+                          <option value="Medis">Masalah Medis / Dokter</option>
+                          <option value="Keuangan">Pembayaran & Tagihan</option>
+                          <option value="Pelayanan">Sikap / Kualitas Staf</option>
+                          <option value="Fasilitas">Fasilitas & Kebersihan</option>
+                          <option value="Lainnya">Lainnya</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: 5 }}>Subjek Keluhan</label>
+                        <input 
+                          type="text" required placeholder="Contoh: Kesalahan nominal invoice"
+                          value={ticketForm.title} onChange={e => setTicketForm(prev => ({ ...prev, title: e.target.value }))}
+                          style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: 5 }}>Tingkat Urgensi</label>
+                        <select 
+                          value={ticketForm.urgency} 
+                          onChange={e => setTicketForm(prev => ({ ...prev, urgency: e.target.value }))}
+                          style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: '0.8rem', outline: 'none' }}
+                        >
+                          <option value="Rendah">Rendah</option>
+                          <option value="Sedang">Sedang</option>
+                          <option value="Tinggi">Tinggi</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: 5 }}>Deskripsi Detail Masalah</label>
+                      <textarea 
+                        rows={4} required placeholder="Tuliskan secara lengkap detail masalah, kronologi, serta ekspektasi solusi Anda..."
+                        value={ticketForm.description} onChange={e => setTicketForm(prev => ({ ...prev, description: e.target.value }))}
+                        style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: '0.8rem', outline: 'none', resize: 'vertical', lineHeight: 1.5, boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      style={{ 
+                        marginTop: 10, padding: '12px', background: '#e03131', color: 'white', border: 'none', 
+                        borderRadius: 12, fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', 
+                        boxShadow: '0 4px 14px rgba(224,49,49,0.3)', transition: 'background 0.2s' 
+                      }}
+                    >
+                      Kirim Tiket Keluhan
+                    </button>
+                  </form>
+                ) : selectedTicket ? (
+                  /* Tampilan Detail Tiket & Chatbox Percakapan */
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    {/* Header Detail Tiket */}
+                    <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#1e293b' }}>{selectedTicket.title}</div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>
+                            Kategori: <strong>{selectedTicket.category}</strong> &nbsp;·&nbsp; Urgensi: <strong style={{ color: selectedTicket.urgency === 'Tinggi' ? '#e03131' : '#d97706' }}>{selectedTicket.urgency}</strong> &nbsp;·&nbsp; Pasien: <strong>{selectedTicket.petName}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Chat Area */}
+                    <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      {(selectedTicket.conversations || []).map((msg, idx) => {
+                        const isAdmin = msg.role === 'admin';
+                        return (
+                          <div 
+                            key={msg.id || idx} 
+                            style={{ 
+                              display: 'flex', 
+                              flexDirection: 'column', 
+                              alignItems: isAdmin ? 'flex-start' : 'flex-end',
+                              maxWidth: '75%',
+                              alignSelf: isAdmin ? 'flex-start' : 'flex-end'
+                            }}
+                          >
+                            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b', marginBottom: 4, padding: '0 4px' }}>
+                              {isAdmin ? msg.senderName : 'Anda'}
+                            </div>
+                            <div 
+                              style={{ 
+                                padding: '10px 14px', 
+                                borderRadius: 14, 
+                                fontSize: '0.8rem', 
+                                lineHeight: 1.5,
+                                background: isAdmin ? '#f1f5f9' : '#e03131',
+                                color: isAdmin ? '#1e293b' : 'white',
+                                borderTopLeftRadius: isAdmin ? 0 : 14,
+                                borderTopRightRadius: isAdmin ? 14 : 0
+                              }}
+                            >
+                              {msg.message}
+                            </div>
+                            <div style={{ fontSize: '0.6rem', color: '#94a3b8', marginTop: 4, padding: '0 4px' }}>
+                              {msg.time}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Chat Input */}
+                    {selectedTicket.status !== 'Selesai' ? (
+                      <form onSubmit={handleSendTicketReply} style={{ padding: 14, borderTop: '1px solid #f1f5f9', display: 'flex', gap: 10, background: 'white' }}>
+                        <input 
+                          type="text" required placeholder="Tulis balasan pesan Anda di sini..."
+                          value={replyMessage} onChange={e => setReplyMessage(e.target.value)}
+                          style={{ flex: 1, padding: '10px 16px', border: '1.5px solid #e2e8f0', borderRadius: 12, fontSize: '0.82rem', outline: 'none' }}
+                        />
+                        <button 
+                          type="submit" 
+                          style={{ padding: '0 18px', background: '#e03131', color: 'white', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                        >
+                          Kirim ➔
+                        </button>
+                      </form>
+                    ) : (
+                      <div style={{ padding: 16, background: '#f0fdf4', borderTop: '1px solid #bbf7d0', textAlign: 'center', fontSize: '0.78rem', color: '#15803d', fontWeight: 600 }}>
+                        🔒 Tiket keluhan ini telah diselesaikan. Anda tidak dapat mengirim balasan lagi.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', padding: 24, textAlign: 'center' }}>
+                    <span style={{ fontSize: '3rem', marginBottom: 10 }}>🎫</span>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>Pilih salah satu tiket keluhan di sebelah kiri atau buat tiket bantuan baru.</div>
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Riwayat & Detail Tagihan ── */}
+      {openBillsModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={() => { setOpenBillsModal(false); setSelectedBill(null); }} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(8px)' }} />
+          <div style={{ position: 'relative', zIndex: 10, background: 'white', borderRadius: 20, width: '100%', maxWidth: selectedBill ? 720 : 540, transition: 'all 0.3s ease', display: 'flex', overflow: 'hidden', maxHeight: '82vh', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0', animation: 'scaleUp 0.3s ease' }}>
+            
+            {/* Daftar Tagihan */}
+            <div style={{ flex: 1.2, display: 'flex', flexDirection: 'column', minWidth: 280, maxHeight: '82vh' }}>
+              <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: '1.4rem' }}>🧾</span>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Daftar Tagihan Anda</h3>
+                </div>
+                {!selectedBill && <button onClick={() => setOpenBillsModal(false)} style={{ border: 'none', background: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#94a3b8' }}>✕</button>}
+              </div>
+
+              <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {allBills.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px 10px', color: '#94a3b8', fontSize: '0.82rem' }}>
+                    Tidak ada riwayat tagihan terdaftar.
+                  </div>
+                ) : (
+                  allBills.map(bill => {
+                    const isSelected = selectedBill?.id === bill.id;
+                    const isPaid = bill.status === 'Lunas';
+                    return (
+                      <div 
+                        key={bill.id} 
+                        onClick={() => setSelectedBill(bill)}
+                        style={{ 
+                          padding: '14px 16px', borderRadius: 14, border: `1.5px solid ${isSelected ? '#10b981' : '#edf2f7'}`, 
+                          cursor: 'pointer', background: isSelected ? '#f0fdf4' : '#f8fafc',
+                          transition: 'all 0.2s', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                        }}
+                      >
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e293b', marginBottom: 2 }}>{bill.service}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{bill.invoiceNo} · {formatDate(bill.date)}</div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 14 }}>
+                          <div style={{ fontSize: '0.88rem', fontWeight: 800, color: isPaid ? '#15803d' : '#ea580c', marginBottom: 4 }}>{formatRupiah(bill.amount)}</div>
+                          <span style={{ 
+                            fontSize: '0.6rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6,
+                            background: isPaid ? '#dcfce7' : '#fff7ed', 
+                            color: isPaid ? '#15803d' : '#ea580c',
+                            border: `1.5px solid ${isPaid ? '#bbf7d0' : '#fed7aa'}`
+                          }}>{bill.status}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Detail Tagihan (di sebelah kanan jika dipilih) */}
+            {selectedBill && (
+              <div style={{ flex: 1, borderLeft: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', background: '#fafafa', maxHeight: '82vh' }}>
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e293b' }}>Detail Rincian Tagihan</span>
+                  <button onClick={() => setSelectedBill(null)} style={{ border: 'none', background: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* Status Box */}
+                  <div style={{ padding: 14, background: selectedBill.status === 'Lunas' ? '#f0fdf4' : '#fff7ed', borderRadius: 12, border: `1px solid ${selectedBill.status === 'Lunas' ? '#bbf7d0' : '#fed7aa'}`, textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: selectedBill.status === 'Lunas' ? '#15803d' : '#ea580c', letterSpacing: '0.05em' }}>Status Tagihan</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 850, color: selectedBill.status === 'Lunas' ? '#15803d' : '#ea580c', marginTop: 2 }}>{selectedBill.status}</div>
+                  </div>
+
+                  {/* Info Ringkas */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.78rem', color: '#475569' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Nomor Invoice:</span><strong style={{ color: '#1e293b' }}>{selectedBill.invoiceNo}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Tanggal Terbit:</span><strong style={{ color: '#1e293b' }}>{formatDate(selectedBill.date)}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Layanan Medis:</span><strong style={{ color: '#1e293b' }}>{selectedBill.service}</strong></div>
+                  </div>
+
+                  {/* Rincian Item */}
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Itemized Breakdown</div>
+                    <div style={{ background: 'white', borderRadius: 12, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+                      {selectedBill.details && selectedBill.details.length > 0 ? (
+                        selectedBill.details.map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderBottom: idx < selectedBill.details.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: '0.78rem' }}>
+                            <span style={{ color: '#475569' }}>{item.name || item.item}</span>
+                            <span style={{ fontWeight: 700, color: '#1e293b' }}>{formatRupiah(item.price || item.amount || 0)}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', fontSize: '0.78rem' }}>
+                          <span style={{ color: '#475569' }}>Tarif Layanan Pokok</span>
+                          <span style={{ fontWeight: 700, color: '#1e293b' }}>{formatRupiah(selectedBill.amount)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Total Tagihan */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px dashed #e2e8f0', paddingTop: 16, marginTop: 8 }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>Total Pembayaran:</span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#1e293b' }}>{formatRupiah(selectedBill.amount)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
 
       <GuestFooter />
     </div>
