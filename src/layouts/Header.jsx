@@ -1,65 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Bell, Search, ChevronDown,
-  LayoutDashboard, Users, CalendarDays,
-  BarChart3, Megaphone, Settings, Component,
-  ClipboardList, UserPlus, Layers, Send, Ticket, Zap, ListOrdered,
-  Wrench, DollarSign, UserCheck
+  LayoutDashboard, Users, CalendarDays
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useMemberAuth } from '../context/MemberAuthContext';
 
-/* ─── Nav data — Simplified to 3 CRM Pillars ──────────────── */
+/* ─── Nav data — hanya fitur yang dipertahankan ──────────────── */
 const navItems = [
   {
     label: 'Dashboard',
     icon: LayoutDashboard,
     links: [
-      { label: 'Overview',      description: 'Ringkasan klinik hari ini',   path: '/dashboard', icon: LayoutDashboard },
-      { label: 'Analitik',      description: 'Tren & statistik mendalam',   path: '/analitik',  icon: BarChart3       },
-      { label: 'Kelola Member', description: 'Data member terdaftar',       path: '/admin/members', icon: Users },
-      { label: 'Pasien',        description: 'Daftar pasien & rekam medis', path: '/pasien',    icon: Users        },
-    ],
-  },
-  {
-    label: 'Service',
-    icon: Wrench,
-    color: '#3b5bdb',
-    links: [
-      { label: 'Case Management', description: 'Management kasus & komplain',    path: '/service',   icon: Wrench         },
-      { label: 'Jadwal Temu',     description: 'Atur appointment & jadwal dokter', path: '/jadwal',  icon: CalendarDays   },
-      { label: 'Antrian Digital', description: 'Antrean kunjungan klinik',       path: '/antrian', icon: ListOrdered     },
-      { label: 'Tiket Keluhan',   description: 'Tiket keluhan pelanggan',       path: '/tiket',    icon: Ticket         },
-      { label: 'SLA Monitor',     description: 'Monitor response time',          path: '/sla',      icon: Zap            },
-    ],
-  },
-  {
-    label: 'Sales',
-    icon: DollarSign,
-    color: '#0ca678',
-    links: [
-      { label: 'Sales Pipeline',     description: 'Data transaksi & peluang',        path: '/sales',     icon: DollarSign    },
-      { label: 'Pipeline Member',    description: 'Kanban board member pipeline',   path: '/pipeline',  icon: UserCheck     },
-      { label: 'Follow-up',          description: 'Checklist kunjungan pasien',      path: '/followup',  icon: ClipboardList },
-      { label: 'Lead Management',    description: 'Kelola leads & calon pasien',    path: '/leads',     icon: UserPlus      },
-    ],
-  },
-  {
-    label: 'Marketing',
-    icon: Megaphone,
-    color: '#f76707',
-    links: [
-      { label: 'Campaign Management', description: 'Kampanye & promosi',           path: '/marketing',   icon: Megaphone      },
-      { label: 'Segmentasi Member',   description: 'Segmentasi target pasar',      path: '/segmentasi',  icon: Layers         },
-      { label: 'Pesan Massal',        description: 'Kirim WA & email massal',      path: '/blast',       icon: Send           },
-      { label: 'Reminder Vaksin',     description: 'Pengingat jadwal vaksinasi',  path: '/reminder',    icon: Bell           },
-    ],
-  },
-  {
-    label: 'Lainnya',
-    icon: Settings,
-    links: [
-      { label: 'Pengaturan', description: 'Konfigurasi sistem & akun', path: '/pengaturan', icon: Settings   },
-      { label: 'Components', description: 'UI Component showcase',     path: '/components', icon: Component  },
+      { label: 'Overview',        description: 'Ringkasan klinik hari ini', path: '/dashboard', icon: LayoutDashboard },
+      { label: 'Pasien',          description: 'Daftar pasien & rekam medis', path: '/pasien',   icon: Users        },
+      { label: 'Jadwal Temu',     description: 'Atur appointment & jadwal dokter', path: '/jadwal', icon: CalendarDays },
+      { label: 'Kelola Member',   description: 'Data member terdaftar',     path: '/admin/members', icon: Users },
     ],
   },
 ];
@@ -69,14 +25,11 @@ const navItems = [
 const Header = ({ toggleSidebar, toggleMobileSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState({ name: 'Dr. Taufiq', role: 'Dokter Hewan', initials: 'DT' });
+  const { member } = useMemberAuth();
   const [notifCount] = useState(3);
   const [activeDropdown, setActiveDropdown] = useState(null);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) setUser(JSON.parse(stored));
-  }, []);
+  const user = member || { name: 'Admin', role: 'Administrator' };
 
   /* Check if any link in a group is active */
   const isGroupActive = (links) =>
@@ -153,17 +106,17 @@ const Header = ({ toggleSidebar, toggleMobileSidebar }) => {
           {/* User profile */}
           <button
             id="header-profile-btn"
-            onClick={() => navigate('/profile')}
+            onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 px-2 h-8 hover:bg-[#F8F9FA] rounded-lg transition-colors duration-150 cursor-pointer outline-none"
           >
             {/* Avatar */}
             <div className="size-7 rounded-full bg-gradient-to-br from-[#4FD1C5] to-[#319795] flex items-center justify-center text-white font-bold text-[10px] shrink-0 ring-2 ring-white shadow-sm">
-              {user.initials || user.name?.slice(0, 2).toUpperCase()}
+              {(user.name || '').slice(0, 2).toUpperCase()}
             </div>
             {/* Name + role */}
             <div className="hidden sm:flex flex-col text-left leading-none gap-0.5">
-              <span className="text-[12.5px] font-bold text-[#2D3748] leading-none">{user.name}</span>
-              <span className="text-[10.5px] text-[#A0AEC0] leading-none">{user.role}</span>
+              <span className="text-[12.5px] font-bold text-[#2D3748] leading-none">{user.name || 'Admin'}</span>
+              <span className="text-[10.5px] text-[#A0AEC0] leading-none">Administrator</span>
             </div>
             <ChevronDown size={12} className="text-slate-400 hidden sm:block" />
           </button>
@@ -200,9 +153,9 @@ const Header = ({ toggleSidebar, toggleMobileSidebar }) => {
                 {isOpen && (
                   <div className={[
                     "absolute left-0 mt-0 p-1.5 bg-white border border-slate-100 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-150",
-                    group.links.length > 4 ? "min-w-[260px] sm:min-w-[460px] w-auto sm:w-[460px]" : "min-w-[220px]"
+                    "min-w-[220px]"
                   ].join(' ')}>
-                    <div className={['grid gap-0.5', group.links.length > 4 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'].join(' ')}>
+                    <div className="grid grid-cols-1 gap-0.5">
                       {group.links.map((link) => (
                         <button
                           key={link.path}

@@ -2,6 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../../context/MemberAuthContext';
 import { pasienService, jadwalService, medicalRecordService, vaccineService } from '../../lib/supabaseService';
+import GuestNavbar from '../guest/components/GuestNavbar';
+import GuestFooter from '../guest/components/GuestFooter';
+import '../guest/guest.css';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const petEmoji = (sp) => ({ anjing: '🐕', kucing: '🐈', kelinci: '🐇', burung: '🦜' }[sp?.toLowerCase()] || '🐾');
+const petAccent = (sp) => ({ anjing: { bg: '#fef3c7', color: '#b45309' }, kucing: { bg: '#e0f2fe', color: '#0369a1' }, kelinci: { bg: '#f5f3ff', color: '#6d28d9' } }[sp?.toLowerCase()] || { bg: '#dcfce7', color: '#15803d' });
+
+const getAge = (d) => {
+  if (!d) return '-';
+  const b = new Date(d), t = new Date();
+  let y = t.getFullYear() - b.getFullYear(), m = t.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < b.getDate())) { y--; m += 12; }
+  return y > 0 ? `${y} tahun${m > 0 ? ` ${m} bln` : ''}` : `${m} bulan`;
+};
+
+const STATUS_BADGE = {
+  Sehat:              { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
+  'Vaksin Jatuh Tempo': { bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+  'Perlu Perhatian':  { bg: '#fff1f2', color: '#e11d48', border: '#fecdd3' },
+};
+
+const APPT_BADGE = {
+  Dikonfirmasi: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
+  Menunggu:     { bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+  Selesai:      { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' },
+  Dibatalkan:   { bg: '#fff1f2', color: '#e11d48', border: '#fecdd3' },
+};
 
 export default function MemberPetDetail() {
   const { id } = useParams();
@@ -15,349 +43,263 @@ export default function MemberPetDetail() {
   const [vaccines, setVaccines] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const loadPetData = async () => {
-    try {
-      setLoading(true);
-      const memberUser = JSON.parse(localStorage.getItem('memberUser'));
-      const memberId = memberUser?.id;
-      if (!memberId) { setPet(null); setLoading(false); return; }
-
-      // Find pet
-      const memberPets = await pasienService.getByMemberId(memberId);
-      const foundPet = memberPets.find(p => p.id === id);
-      if (!foundPet) { setPet(null); setLoading(false); return; }
-      setPet(foundPet);
-
-      // Load appointments filtered by pet name
-      const allAppts = await jadwalService.getByMemberId(memberId);
-      const petAppts = allAppts.filter(a => a.petName?.toLowerCase() === foundPet.nama?.toLowerCase());
-      setAppointments(petAppts);
-
-      // Load medical records filtered by pet name
-      const allRecords = await medicalRecordService.getByMemberId(memberId);
-      const petRecords = allRecords.filter(r => r.petName?.toLowerCase() === foundPet.nama?.toLowerCase());
-      setRecords(petRecords);
-
-      // Load vaccines filtered by pet name
-      const allVaccines = await vaccineService.getAll();
-      const petVaccines = allVaccines.filter(v => v.petName?.toLowerCase() === foundPet.nama?.toLowerCase());
-      setVaccines(petVaccines);
-    } catch (err) {
-      console.error('Failed to load pet data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadPetData();
+    const load = async () => {
+      try {
+        setLoading(true);
+        const memberUser = JSON.parse(localStorage.getItem('memberUser'));
+        const memberId = memberUser?.id;
+        if (!memberId) { setPet(null); return; }
+        const memberPets = await pasienService.getByMemberId(memberId);
+        const found = memberPets.find(p => p.id === id);
+        if (!found) { setPet(null); return; }
+        setPet(found);
+        const [allAppts, allRecords, allVaccines] = await Promise.all([
+          jadwalService.getByMemberId(memberId),
+          medicalRecordService.getByMemberId(memberId),
+          vaccineService.getAll(),
+        ]);
+        setAppointments(allAppts.filter(a => a.petName?.toLowerCase() === found.nama?.toLowerCase()));
+        setRecords(allRecords.filter(r => r.petName?.toLowerCase() === found.nama?.toLowerCase()));
+        setVaccines(allVaccines.filter(v => v.petName?.toLowerCase() === found.nama?.toLowerCase()));
+      } catch (err) { console.error(err); }
+      finally { setLoading(false); }
+    };
+    load();
   }, [id, member]);
 
-  if (!pet) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-slate-100 text-center shadow-sm">
-        <div className="text-5xl mb-4">🔍</div>
-        <h3 className="text-lg font-semibold text-slate-700">Hewan Tidak Ditemukan</h3>
-        <p className="text-slate-400 text-sm max-w-sm mt-1 mb-6">Profil hewan peliharaan tidak ada atau Anda tidak memiliki akses ke data ini.</p>
-        <button 
-          onClick={() => navigate('/member/hewan')}
-          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition"
-        >
-          Kembali ke Daftar Hewan
-        </button>
+  if (loading) return (
+    <div className="guest-page"><GuestNavbar />
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 40, height: 40, border: '3px solid #16a34a', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       </div>
-    );
-  }
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <GuestFooter />
+    </div>
+  );
 
-  const getAge = (birthDateStr) => {
-    if (!birthDateStr) return 'Umur tidak diketahui';
-    const birthDate = new Date(birthDateStr);
-    const today = new Date();
-    let ageYears = today.getFullYear() - birthDate.getFullYear();
-    let ageMonths = today.getMonth() - birthDate.getMonth();
-    
-    if (ageMonths < 0 || (ageMonths === 0 && today.getDate() < birthDate.getDate())) {
-      ageYears--;
-      ageMonths += 12;
-    }
-    
-    if (ageYears > 0) {
-      return `${ageYears} tahun` + (ageMonths > 0 ? ` ${ageMonths} bulan` : '');
-    }
-    return `${ageMonths} bulan`;
-  };
+  if (!pet) return (
+    <div className="guest-page"><GuestNavbar />
+      <main style={{ paddingTop: 96, paddingBottom: 80, background: '#f4f7fc', minHeight: '60vh' }}>
+        <div className="guest-container">
+          <div style={{ background: 'white', borderRadius: 18, border: '1px solid #edf2f7', padding: '60px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: '3rem', marginBottom: 12 }}>🔍</div>
+            <h3 style={{ fontWeight: 800, color: '#1e293b', marginBottom: 8 }}>Hewan Tidak Ditemukan</h3>
+            <p style={{ color: '#64748b', fontSize: '0.85rem', maxWidth: 340, margin: '0 auto 24px' }}>Profil hewan tidak ada atau Anda tidak memiliki akses.</p>
+            <button onClick={() => navigate('/member/hewan')} style={{ padding: '10px 24px', borderRadius: 12, border: 'none', background: '#16a34a', color: 'white', fontWeight: 700, cursor: 'pointer' }}>Kembali ke Daftar</button>
+          </div>
+        </div>
+      </main>
+      <GuestFooter />
+    </div>
+  );
 
-  const petEmoji = (sp) => {
-    const s = sp?.toLowerCase();
-    if (s === 'anjing') return '🐕';
-    if (s === 'kucing') return '🐈';
-    if (s === 'kelinci') return '🐇';
-    if (s === 'burung') return '🦜';
-    return '🐾';
-  };
-
-  const getPastelBgClass = (sp) => {
-    const s = sp?.toLowerCase();
-    if (s === 'anjing') return 'from-amber-100 to-amber-50 text-amber-600 border-amber-200';
-    if (s === 'kucing') return 'from-sky-100 to-sky-50 text-sky-600 border-sky-200';
-    if (s === 'kelinci') return 'from-purple-100 to-purple-50 text-purple-600 border-purple-200';
-    return 'from-emerald-100 to-emerald-50 text-emerald-600 border-emerald-200';
-  };
-
-  const getStatusBadgeClass = (status) => {
-    if (status === 'Sehat') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-    if (status === 'Vaksin Jatuh Tempo') return 'bg-amber-100 text-amber-800 border-amber-200';
-    return 'bg-rose-100 text-rose-800 border-rose-200'; // Perlu Perhatian
-  };
+  const accent = petAccent(pet.spesies);
+  const statusCfg = STATUS_BADGE[pet.status] || { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' };
+  const TABS = [{ id: 'summary', label: 'Ringkasan', icon: '📝' }, { id: 'medical', label: 'Rekam Medis', icon: '📋' }, { id: 'vaccines', label: 'Vaksinasi', icon: '💉' }, { id: 'appointments', label: 'Janji Temu', icon: '📅' }];
 
   return (
-    <div className="pb-10">
-      {/* Back Button */}
-      <button 
-        onClick={() => navigate('/member/hewan')}
-        className="flex items-center gap-2 text-slate-500 hover:text-slate-800 text-sm font-medium mb-6 transition"
-      >
-        <span className="text-base">←</span> Kembali ke Daftar Hewan
-      </button>
+    <div className="guest-page">
+      <GuestNavbar />
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
 
-      {/* Pet Header Card */}
-      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm mb-6">
-        <div className={`h-32 bg-gradient-to-r ${getPastelBgClass(pet.spesies)} flex items-end px-6 pb-4 relative`}>
-          <div className="absolute top-4 right-4">
-            <span className={`px-3 py-1 text-xs font-semibold rounded-full border bg-white ${getStatusBadgeClass(pet.status)} shadow-sm`}>
-              Status: {pet.status}
-            </span>
-          </div>
-        </div>
-        <div className="px-6 pb-6 pt-4 flex flex-col md:flex-row items-start md:items-center gap-5 -translate-y-6 md:translate-y-0">
-          <div className={`w-24 h-24 rounded-2xl bg-gradient-to-tr ${getPastelBgClass(pet.spesies)} flex items-center justify-center text-5xl border shadow-md bg-white -mt-12 md:mt-0 z-10`}>
-            {petEmoji(pet.spesies)}
-          </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-slate-800">{pet.nama}</h1>
-            <p className="text-slate-400 font-medium text-sm mt-0.5">
-              {pet.spesies} · {pet.ras || 'Blasteran'} · {getAge(pet.tanggalLahir)}
-            </p>
-          </div>
-          <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-0">
-            <button 
-              onClick={() => navigate('/member/janji', { state: { openBookingModal: true, selectPet: pet.nama } })}
-              className="flex-1 md:flex-none px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs shadow-sm transition active:scale-95 text-center"
-            >
-              📅 Buat Janji Temu
-            </button>
-          </div>
-        </div>
-      </div>
+      <main style={{ paddingTop: 96, paddingBottom: 80, background: '#f4f7fc', minHeight: '60vh' }}>
+        <div className="guest-container">
+          {/* Back */}
+          <button onClick={() => navigate('/member/hewan')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#64748b', fontSize: '0.83rem', fontWeight: 600, cursor: 'pointer', marginBottom: 18, padding: 0 }}>
+            ← Kembali ke Daftar Hewan
+          </button>
 
-      {/* Tab Navigation */}
-      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-        <div className="flex border-b border-slate-100 overflow-x-auto">
-          {[
-            { id: 'summary', label: 'Ringkasan', icon: '📝' },
-            { id: 'medical', label: 'Rekam Medis', icon: '📋' },
-            { id: 'vaccines', label: 'Vaksinasi', icon: '💉' },
-            { id: 'appointments', label: 'Janji Temu', icon: '📅' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 whitespace-nowrap transition ${
-                activeTab === tab.id 
-                  ? 'border-emerald-600 text-emerald-700 bg-emerald-50/20' 
-                  : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50/50'
-              }`}
-            >
-              <span>{tab.icon}</span> {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab Content */}
-        <div className="p-6">
-          {/* SUMMARY TAB */}
-          {activeTab === 'summary' && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-base font-bold text-slate-800 mb-4">Informasi Dasar Peliharaan</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Nama Lengkap', value: pet.nama },
-                    { label: 'Spesies / Jenis', value: pet.spesies },
-                    { label: 'Ras / Breed', value: pet.ras || '-' },
-                    { label: 'Tanggal Lahir', value: pet.tanggalLahir || '-' },
-                    { label: 'Jenis Kelamin', value: pet.jenisKelamin },
-                    { label: 'Berat Badan', value: pet.berat ? `${pet.berat} kg` : '-' },
-                    { label: 'Warna Bulu', value: pet.warna || '-' },
-                    { label: 'Status Sterilisasi', value: pet.sterilisasi ? 'Sudah Steril' : 'Belum Steril' }
-                  ].map((info) => (
-                    <div key={info.label} className="p-4 bg-slate-50 rounded-xl border border-slate-100/50">
-                      <span className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">{info.label}</span>
-                      <span className="text-sm font-bold text-slate-700">{info.value}</span>
-                    </div>
-                  ))}
-                </div>
+          {/* Pet Header Card */}
+          <div style={{ background: 'white', borderRadius: 18, border: '1px solid #edf2f7', overflow: 'hidden', marginBottom: 20, boxShadow: '0 2px 10px rgba(15,23,42,0.06)' }}>
+            {/* Banner */}
+            <div style={{ height: 100, background: `linear-gradient(135deg, ${accent.bg}, white)`, position: 'relative', display: 'flex', alignItems: 'center', padding: '0 24px' }}>
+              <div style={{ position: 'absolute', top: 14, right: 16 }}>
+                <span style={{ padding: '4px 12px', borderRadius: 9999, fontSize: '0.7rem', fontWeight: 700, background: statusCfg.bg, color: statusCfg.color, border: `1px solid ${statusCfg.border}` }}>
+                  {pet.status}
+                </span>
               </div>
-
-              <div className="border-t border-slate-100 pt-6">
-                <h3 className="text-base font-bold text-slate-800 mb-3">Status Kesehatan Saat Ini</h3>
-                <div className={`p-4 rounded-xl border flex gap-3 ${getStatusBadgeClass(pet.status)}`}>
-                  <div className="text-xl">
-                    {pet.status === 'Sehat' ? '🟢' : pet.status === 'Vaksin Jatuh Tempo' ? '🟡' : '🔴'}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm">Status: {pet.status}</h4>
-                    <p className="text-xs opacity-90 mt-0.5">
-                      {pet.status === 'Sehat' 
-                        ? 'Hewan peliharaan Anda dalam kondisi prima. Tetap berikan asupan makanan sehat dan pemeriksaan berkala.'
-                        : pet.status === 'Vaksin Jatuh Tempo'
-                        ? 'Jadwal imunisasi berkala sudah memasuki masa jatuh tempo. Harap segera daftarkan janji vaksinasi agar kekebalan tubuhnya terjaga.'
-                        : 'Membutuhkan perhatian klinis khusus atau pengawasan resep obat aktif. Silakan hubungi dokter hewan jika ada gejala mengkhawatirkan.'
-                      }
-                    </p>
-                  </div>
-                </div>
+              {/* Avatar overlapping */}
+              <div style={{ width: 72, height: 72, borderRadius: 18, background: accent.bg, border: `2px solid ${accent.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.2rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transform: 'translateY(24px)', zIndex: 2, flexShrink: 0 }}>
+                {petEmoji(pet.spesies)}
               </div>
             </div>
-          )}
+            {/* Info */}
+            <div style={{ padding: '30px 24px 18px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+              <div>
+                <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0f172a', margin: '0 0 4px' }}>{pet.nama}</h1>
+                <p style={{ color: '#94a3b8', fontSize: '0.83rem', margin: 0 }}>{pet.spesies} · {pet.ras || 'Blasteran'} · {getAge(pet.tanggalLahir)}</p>
+              </div>
+              <button onClick={() => navigate('/member/janji', { state: { openBookingModal: true, selectPet: pet.nama } })} style={{
+                padding: '9px 18px', borderRadius: 12, border: 'none', background: '#16a34a', color: 'white',
+                fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', boxShadow: '0 2px 8px rgba(22,163,74,0.25)',
+              }}>📅 Buat Janji Temu</button>
+            </div>
+          </div>
 
-          {/* MEDICAL RECORDS TAB */}
-          {activeTab === 'medical' && (
-            <div className="space-y-4">
-              <h3 className="text-base font-bold text-slate-800 mb-2">Riwayat Pemeriksaan Medis</h3>
-              {records.length === 0 ? (
-                <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed text-slate-400 text-sm">
-                  Belum ada rekam medis terdaftar untuk {pet.nama}.
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {records.map((record) => (
-                    <div key={record.id} className="p-5 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition shadow-sm">
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-50 mb-3">
-                        <div>
-                          <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md">{record.id}</span>
-                          <span className="text-xs text-slate-400 font-medium ml-2">{record.date}</span>
+          {/* Tabs */}
+          <div style={{ background: 'white', borderRadius: 18, border: '1px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 6px rgba(15,23,42,0.05)' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid #f1f5f9', overflowX: 'auto' }}>
+              {TABS.map(t => (
+                <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '13px 20px',
+                  background: 'none', border: 'none', borderBottom: `3px solid ${activeTab === t.id ? '#16a34a' : 'transparent'}`,
+                  color: activeTab === t.id ? '#16a34a' : '#94a3b8', fontWeight: activeTab === t.id ? 800 : 600,
+                  fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s',
+                }}>
+                  <span>{t.icon}</span> {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ padding: 22 }}>
+              {/* ─── SUMMARY ─── */}
+              {activeTab === 'summary' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  <div>
+                    <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.88rem', marginBottom: 12 }}>Informasi Dasar</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 10 }}>
+                      {[['Nama Lengkap', pet.nama], ['Spesies', pet.spesies], ['Ras / Breed', pet.ras || '-'], ['Tanggal Lahir', pet.tanggalLahir || '-'], ['Jenis Kelamin', pet.jenisKelamin], ['Berat Badan', pet.berat ? `${pet.berat} kg` : '-'], ['Warna Bulu', pet.warna || '-'], ['Sterilisasi', pet.sterilisasi ? 'Sudah Steril' : 'Belum Steril']].map(([k, v]) => (
+                        <div key={k} style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 12, border: '1px solid #edf2f7' }}>
+                          <div style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#94a3b8', marginBottom: 4 }}>{k}</div>
+                          <div style={{ fontSize: '0.83rem', fontWeight: 700, color: '#1e293b' }}>{v}</div>
                         </div>
-                        <div className="text-xs text-slate-500 font-medium">
-                          Dokter Pemeriksa: <strong className="text-slate-700">{record.doctor}</strong>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 18 }}>
+                    <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.88rem', marginBottom: 10 }}>Status Kesehatan</div>
+                    <div style={{ padding: '14px 16px', background: statusCfg.bg, border: `1px solid ${statusCfg.border}`, borderRadius: 12, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>{pet.status === 'Sehat' ? '🟢' : pet.status === 'Vaksin Jatuh Tempo' ? '🟡' : '🔴'}</span>
+                      <div>
+                        <div style={{ fontWeight: 800, color: statusCfg.color, fontSize: '0.88rem', marginBottom: 4 }}>Status: {pet.status}</div>
+                        <div style={{ fontSize: '0.78rem', color: statusCfg.color, opacity: 0.85, lineHeight: 1.5 }}>
+                          {pet.status === 'Sehat' ? 'Hewan peliharaan Anda dalam kondisi prima. Berikan asupan makanan sehat dan pemeriksaan berkala.'
+                            : pet.status === 'Vaksin Jatuh Tempo' ? 'Jadwal imunisasi sudah jatuh tempo. Segera buat janji vaksinasi agar kekebalan terjaga.'
+                            : 'Membutuhkan perhatian klinis. Silakan hubungi dokter hewan jika ada gejala mengkhawatirkan.'}
                         </div>
-                      </div>
-                      <div className="space-y-2 text-sm">
-                        <div>
-                          <strong className="text-slate-700">Diagnosis:</strong>
-                          <div className="text-slate-600 mt-0.5">{record.diagnosis}</div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-2 border-t border-slate-50/50">
-                          <div>
-                            <strong className="text-slate-700 text-xs">Tindakan Medis:</strong>
-                            <div className="text-slate-500 text-xs mt-0.5">{record.action}</div>
-                          </div>
-                          <div>
-                            <strong className="text-slate-700 text-xs">Terapi / Resep Obat:</strong>
-                            <div className="text-slate-500 text-xs mt-0.5">{record.treatment}</div>
-                          </div>
-                        </div>
-                        {record.notes && (
-                          <div className="bg-amber-50/50 border border-amber-100/30 p-2.5 rounded-lg text-xs text-slate-600 mt-2">
-                            <strong>Catatan Tambahan:</strong> {record.notes}
-                          </div>
-                        )}
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* VACCINES TAB */}
-          {activeTab === 'vaccines' && (
-            <div className="space-y-4">
-              <h3 className="text-base font-bold text-slate-800 mb-2">Jadwal & Riwayat Imunisasi</h3>
-              {vaccines.length === 0 ? (
-                <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed text-slate-400 text-sm">
-                  Belum ada rekam vaksinasi terdaftar untuk {pet.nama}.
+              {/* ─── MEDICAL ─── */}
+              {activeTab === 'medical' && (
+                <div>
+                  <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.88rem', marginBottom: 12 }}>Riwayat Pemeriksaan Medis</div>
+                  {records.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '36px', background: '#f8fafc', borderRadius: 12, border: '1.5px dashed #e2e8f0', color: '#94a3b8', fontSize: '0.83rem' }}>
+                      📋 Belum ada rekam medis untuk {pet.nama}.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {records.map(rec => (
+                        <div key={rec.id} style={{ background: 'white', border: '1px solid #edf2f7', borderRadius: 14, padding: '14px 16px', boxShadow: '0 1px 4px rgba(15,23,42,0.04)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f8fafc', paddingBottom: 10, marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ padding: '2px 8px', background: '#f0fdf4', color: '#16a34a', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700 }}>{rec.id}</span>
+                              <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{rec.date}</span>
+                            </div>
+                            <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>👨‍⚕️ {rec.doctor}</span>
+                          </div>
+                          <div style={{ marginBottom: 8 }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Diagnosis</span>
+                            <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.85rem', marginTop: 3 }}>{rec.diagnosis}</div>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            {[['Tindakan', rec.action], ['Terapi', rec.treatment]].map(([k, v]) => (
+                              <div key={k}>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>{k}</span>
+                                <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: 2 }}>{v}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {rec.notes && <div style={{ marginTop: 10, padding: '8px 12px', background: '#fffbeb', borderRadius: 8, fontSize: '0.75rem', color: '#92400e', fontStyle: 'italic' }}>📝 {rec.notes}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="overflow-hidden border border-slate-100 rounded-xl">
-                  <table className="w-full text-left border-collapse text-sm">
-                    <thead>
-                      <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
-                        <th className="p-4">Jenis Vaksin</th>
-                        <th className="p-4">Tanggal Jatuh Tempo</th>
-                        <th className="p-4">Sisa Hari</th>
-                        <th className="p-4">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50 font-medium">
-                      {vaccines.map((v) => {
-                        const isOverdue = v.daysRemaining < 0;
-                        const statusText = v.status === 'Sudah Diingatkan' ? 'Selesai / Terjadwal' : (isOverdue ? 'Terlambat' : 'Jatuh Tempo');
-                        const colorClass = v.status === 'Sudah Diingatkan' 
-                          ? 'bg-emerald-100 text-emerald-800' 
-                          : (isOverdue ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800');
+              )}
 
-                        return (
-                          <tr key={v.id} className="hover:bg-slate-50/30">
-                            <td className="p-4 font-bold text-slate-700">{v.vaccineType}</td>
-                            <td className="p-4 text-slate-500">{v.dueDate}</td>
-                            <td className="p-4 text-slate-500">{isOverdue ? `${Math.abs(v.daysRemaining)} hari terlambat` : `${v.daysRemaining} hari lagi`}</td>
-                            <td className="p-4">
-                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${colorClass}`}>
-                                {statusText}
-                              </span>
-                            </td>
+              {/* ─── VACCINES ─── */}
+              {activeTab === 'vaccines' && (
+                <div>
+                  <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.88rem', marginBottom: 12 }}>Jadwal & Riwayat Imunisasi</div>
+                  {vaccines.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '36px', background: '#f8fafc', borderRadius: 12, border: '1.5px dashed #e2e8f0', color: '#94a3b8', fontSize: '0.83rem' }}>
+                      💉 Belum ada data vaksinasi untuk {pet.nama}.
+                    </div>
+                  ) : (
+                    <div style={{ border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
+                            {['Jenis Vaksin', 'Jatuh Tempo', 'Sisa / Telat', 'Status'].map(h => (
+                              <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                            ))}
                           </tr>
+                        </thead>
+                        <tbody>
+                          {vaccines.map(v => {
+                            const isOverdue = v.daysRemaining < 0;
+                            const done = v.status === 'Sudah Diingatkan';
+                            const badge = done ? { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0', text: 'Selesai' } : isOverdue ? { bg: '#fff1f2', color: '#e11d48', border: '#fecdd3', text: 'Terlambat' } : { bg: '#fffbeb', color: '#d97706', border: '#fde68a', text: 'Jatuh Tempo' };
+                            return (
+                              <tr key={v.id} style={{ borderBottom: '1px solid #f8fafc' }}>
+                                <td style={{ padding: '10px 14px', fontWeight: 700, color: '#1e293b' }}>{v.vaccineType}</td>
+                                <td style={{ padding: '10px 14px', color: '#64748b' }}>{v.dueDate}</td>
+                                <td style={{ padding: '10px 14px', color: '#64748b' }}>{done ? '-' : isOverdue ? `${Math.abs(v.daysRemaining)} hari terlambat` : `${v.daysRemaining} hari lagi`}</td>
+                                <td style={{ padding: '10px 14px' }}>
+                                  <span style={{ padding: '3px 10px', borderRadius: 9999, fontSize: '0.7rem', fontWeight: 700, background: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>{badge.text}</span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ─── APPOINTMENTS ─── */}
+              {activeTab === 'appointments' && (
+                <div>
+                  <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.88rem', marginBottom: 12 }}>Riwayat Janji Temu</div>
+                  {appointments.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '36px', background: '#f8fafc', borderRadius: 12, border: '1.5px dashed #e2e8f0', color: '#94a3b8', fontSize: '0.83rem' }}>
+                      📅 Belum ada janji temu untuk {pet.nama}.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {appointments.map(appt => {
+                        const ab = APPT_BADGE[appt.status] || { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' };
+                        return (
+                          <div key={appt.id} style={{ background: 'white', border: '1px solid #edf2f7', borderRadius: 12, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
+                            <div>
+                              <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.85rem', marginBottom: 4 }}>{appt.service}</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 14px', fontSize: '0.75rem', color: '#64748b' }}>
+                                <span>📅 {appt.date}</span>
+                                <span>⏰ {appt.time} WIB</span>
+                                <span>👨‍⚕️ {appt.doctor}</span>
+                              </div>
+                              {appt.notes && <div style={{ marginTop: 6, fontSize: '0.73rem', color: '#64748b', fontStyle: 'italic' }}>"{appt.notes}"</div>}
+                            </div>
+                            <span style={{ padding: '4px 12px', borderRadius: 9999, fontSize: '0.7rem', fontWeight: 700, background: ab.bg, color: ab.color, border: `1px solid ${ab.border}`, whiteSpace: 'nowrap' }}>{appt.status}</span>
+                          </div>
                         );
                       })}
-                    </tbody>
-                  </table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
-
-          {/* APPOINTMENTS TAB */}
-          {activeTab === 'appointments' && (
-            <div className="space-y-4">
-              <h3 className="text-base font-bold text-slate-800 mb-2">Riwayat Janji Temu</h3>
-              {appointments.length === 0 ? (
-                <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed text-slate-400 text-sm">
-                  Belum ada janji temu terdaftar untuk {pet.nama}.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {appointments.map((appt) => {
-                    const badgeClass = {
-                      'Dikonfirmasi': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                      'Menunggu': 'bg-amber-100 text-amber-800 border-amber-200',
-                      'Selesai': 'bg-slate-100 text-slate-800 border-slate-200',
-                      'Dibatalkan': 'bg-rose-100 text-rose-800 border-rose-200'
-                    };
-
-                    return (
-                      <div key={appt.id} className="p-4 bg-white rounded-xl border border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:border-slate-200 transition shadow-sm">
-                        <div className="space-y-1">
-                          <div className="font-bold text-slate-700">{appt.service}</div>
-                          <div className="text-xs text-slate-400 font-semibold flex flex-wrap gap-x-4">
-                            <span>📅 {appt.date}</span>
-                            <span>⏰ {appt.time} WIB</span>
-                            <span>👨‍⚕️ {appt.doctor}</span>
-                          </div>
-                          {appt.notes && <p className="text-xs text-slate-500 mt-1 italic">"{appt.notes}"</p>}
-                        </div>
-                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${badgeClass[appt.status] || 'bg-slate-100 text-slate-800'}`}>
-                          {appt.status}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      </main>
+      <GuestFooter />
     </div>
   );
 }

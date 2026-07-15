@@ -1,4 +1,7 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import logoImg from '../../../assets/logo.png';
+import '../guest.css';
 
 export default function GuestFooter() {
   const handleScrollTo = (id) => {
@@ -18,23 +21,9 @@ export default function GuestFooter() {
           <div className="guest-footer__brand">
             <div className="guest-footer__logo">
               <div className="guest-footer__logo-icon" aria-hidden="true">
-                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
-                  <circle cx="20" cy="20" r="20" fill="url(#footerLogoGrad)" />
-                  <path d="M12 16c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z" fill="white" opacity="0.9"/>
-                  <path d="M20 16c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z" fill="white" opacity="0.9"/>
-                  <path d="M10 24c0-3.3 2.7-6 6-6h8c3.3 0 6 2.7 6 6v2H10v-2z" fill="white"/>
-                  <circle cx="15.5" cy="21" r="1.2" fill="#16a34a" />
-                  <circle cx="20" cy="21" r="1.2" fill="#16a34a" />
-                  <circle cx="24.5" cy="21" r="1.2" fill="#16a34a" />
-                  <defs>
-                    <linearGradient id="footerLogoGrad" x1="0" y1="0" x2="40" y2="40">
-                      <stop offset="0%" stopColor="#16a34a" />
-                      <stop offset="100%" stopColor="#0ea5e9" />
-                    </linearGradient>
-                  </defs>
-                </svg>
+                <img src={logoImg} alt="PetCare Clinic Logo" width="36" height="36" style={{ objectFit: 'contain', display: 'block' }} />
               </div>
-              <span className="guest-footer__logo-text">Veterinario</span>
+              <span className="guest-footer__logo-text">PetCare Clinic</span>
             </div>
             <p className="guest-footer__brand-desc">
               Klinik hewan terpercaya dengan dokter berpengalaman. Kami hadir untuk memberikan
@@ -180,8 +169,8 @@ export default function GuestFooter() {
                     <polyline points="22,6 12,13 2,6"/>
                   </svg>
                 </div>
-                <a href="mailto:hello@veterinario.id" className="guest-footer__contact-text guest-footer__contact-link">
-                  hello@veterinario.id
+                <a href="mailto:hello@petcareclinic.id" className="guest-footer__contact-text guest-footer__contact-link">
+                  hello@petcareclinic.id
                 </a>
               </li>
 
@@ -210,7 +199,7 @@ export default function GuestFooter() {
         {/* Bottom bar */}
         <div className="guest-footer__bottom">
           <p className="guest-footer__copyright">
-            © {year} <strong>Veterinario</strong>. All rights reserved. Made with ❤️ for your beloved pets.
+            © {year} <strong>PetCare Clinic</strong>. All rights reserved. Made with ❤️ for your beloved pets.
           </p>
           <div className="guest-footer__legal">
             <button className="guest-footer__legal-link">Kebijakan Privasi</button>

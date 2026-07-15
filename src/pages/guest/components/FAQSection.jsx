@@ -6,7 +6,7 @@ const FAQS = [
     id: 'faq-member-gratis',
     question: 'Apakah pendaftaran member berbayar?',
     answer:
-      'Tidak sama sekali! Pendaftaran member di Veterinario 100% gratis dan tidak ada biaya bulanan apapun. Cukup daftar dengan email, lengkapi profil, dan semua fitur member langsung bisa Anda nikmati — termasuk booking online, rekam medis digital, dan program poin.',
+      'Tidak sama sekali! Pendaftaran member di PetCare Clinic 100% gratis dan tidak ada biaya bulanan apapun. Cukup daftar dengan email, lengkapi profil, dan semua fitur member langsung bisa Anda nikmati — termasuk booking online, rekam medis digital, dan program poin.',
   },
   {
     id: 'faq-poin',
@@ -159,7 +159,7 @@ export default function FAQSection() {
               </a>
 
               <a
-                href="mailto:hello@veterinario.id"
+                href="mailto:hello@petcareclinic.id"
                 className="faq-sidebar__channel"
                 id="faq-email-link"
               >
@@ -171,7 +171,7 @@ export default function FAQSection() {
                 </div>
                 <div>
                   <div className="faq-sidebar__channel-label">Email</div>
-                  <div className="faq-sidebar__channel-sub">hello@veterinario.id</div>
+                  <div className="faq-sidebar__channel-sub">hello@petcareclinic.id</div>
                 </div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="faq-sidebar__channel-arrow" aria-hidden="true">
                   <line x1="5" y1="12" x2="19" y2="12"/>

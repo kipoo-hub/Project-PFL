@@ -3,25 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../../../context/MemberAuthContext';
 import { supabase } from '../../../lib/supabase';
 import { pointService } from '../../../lib/supabaseService';
+import logoImg from '../../../assets/logo.png';
 import './member-auth.css';
 
-const LogoSVG = () => (
-  <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
-    <circle cx="20" cy="20" r="20" fill="url(#regLogoGrad)" />
-    <path d="M12 16c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z" fill="white" opacity="0.9"/>
-    <path d="M20 16c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z" fill="white" opacity="0.9"/>
-    <path d="M10 24c0-3.3 2.7-6 6-6h8c3.3 0 6 2.7 6 6v2H10v-2z" fill="white"/>
-    <circle cx="15.5" cy="21" r="1.2" fill="#16a34a" />
-    <circle cx="20" cy="21" r="1.2" fill="#16a34a" />
-    <circle cx="24.5" cy="21" r="1.2" fill="#16a34a" />
-    <defs>
-      <linearGradient id="regLogoGrad" x1="0" y1="0" x2="40" y2="40">
-        <stop offset="0%" stopColor="#16a34a" />
-        <stop offset="100%" stopColor="#0ea5e9" />
-      </linearGradient>
-    </defs>
-  </svg>
-);
 
 const PetSVG = () => (
   <svg viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" width="180" height="180">
@@ -85,8 +69,8 @@ export default function MemberRegister() {
 
     setLoading(true);
     try {
-      // 1. Sign up using Supabase Auth (which triggers auto-creation of a profile in database with role = 'guest')
-      const data = await signUp(form.name, form.email, form.password, 'guest');
+      // 1. Sign up using Supabase Auth (which triggers auto-creation of a profile in database with role = 'member')
+      const data = await signUp(form.name, form.email, form.password, 'member');
       const user = data?.user;
 
       if (!user) {
@@ -127,7 +111,7 @@ export default function MemberRegister() {
       }
 
       setSuccess(`Selamat datang, ${form.name.split(' ')[0]}! Akun kamu berhasil dibuat.`);
-      setTimeout(() => navigate('/guest', { replace: true }), 2000);
+      setTimeout(() => navigate('/member/membership', { replace: true }), 2000);
     } catch (err) {
       console.error(err);
       setErrors({ auth: err.message || 'Terjadi kesalahan sistem' });
@@ -174,9 +158,10 @@ export default function MemberRegister() {
         <div className="mauth-left__blob mauth-left__blob--2" />
 
         <div className="mauth-left__logo">
-          <LogoSVG />
-          <span className="mauth-left__logo-text">Veterinario</span>
+          <img src={logoImg} alt="PetCare Clinic Logo" width="36" height="36" style={{ objectFit: 'contain', display: 'block' }} />
+          <span className="mauth-left__logo-text">PetCare Clinic</span>
         </div>
+
 
         <div className="mauth-left__content">
           <h1 className="mauth-left__title">
@@ -185,7 +170,7 @@ export default function MemberRegister() {
             Hewan Peliharaanmu
           </h1>
           <p className="mauth-left__subtitle">
-            Bergabung dengan ribuan pemilik hewan yang mempercayakan kesehatan peliharaannya kepada Veterinario.
+            Bergabung dengan ribuan pemilik hewan yang mempercayakan kesehatan peliharaannya kepada PetCare Clinic.
           </p>
           <div className="mauth-left__illustration">
             <div className="mauth-left__pet-card">
@@ -208,7 +193,7 @@ export default function MemberRegister() {
           ))}
         </div>
 
-        <div className="mauth-left__footer">© 2024 Veterinario. All rights reserved.</div>
+        <div className="mauth-left__footer">© 2024 PetCare Clinic. All rights reserved.</div>
       </div>
 
       {/* ── RIGHT PANEL ── */}
@@ -220,7 +205,7 @@ export default function MemberRegister() {
               Daftar Member Gratis
             </div>
             <h2 className="mauth-form-title">Buat Akun Member</h2>
-            <p className="mauth-form-subtitle">Isi data di bawah untuk mulai menikmati layanan Veterinario.</p>
+            <p className="mauth-form-subtitle">Isi data di bawah untuk mulai menikmati layanan PetCare Clinic.</p>
           </div>
 
           {success && (
@@ -341,7 +326,7 @@ export default function MemberRegister() {
                 <a href="#" className="mauth-checkbox__link">Syarat & Ketentuan</a>
                 {' '}dan{' '}
                 <a href="#" className="mauth-checkbox__link">Kebijakan Privasi</a>{' '}
-                Veterinario
+                PetCare Clinic
               </label>
             </div>
             {errors.terms && <div className="mauth-field__error" style={{ marginTop: -18, marginBottom: 14 }}>⚠ {errors.terms}</div>}

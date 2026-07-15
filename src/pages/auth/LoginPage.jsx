@@ -2,25 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMemberAuth, redirectByRole } from '../../context/MemberAuthContext';
 import { supabase } from '../../lib/supabase';
+import logoImg from '../../assets/logo.png';
 import '../../pages/member/auth/member-auth.css';
 
-const LogoSVG = () => (
-  <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
-    <circle cx="20" cy="20" r="20" fill="url(#loginNewGrad)" />
-    <path d="M12 16c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z" fill="white" opacity="0.9"/>
-    <path d="M20 16c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z" fill="white" opacity="0.9"/>
-    <path d="M10 24c0-3.3 2.7-6 6-6h8c3.3 0 6 2.7 6 6v2H10v-2z" fill="white"/>
-    <circle cx="15.5" cy="21" r="1.2" fill="#16a34a" />
-    <circle cx="20" cy="21" r="1.2" fill="#16a34a" />
-    <circle cx="24.5" cy="21" r="1.2" fill="#16a34a" />
-    <defs>
-      <linearGradient id="loginNewGrad" x1="0" y1="0" x2="40" y2="40">
-        <stop offset="0%" stopColor="#16a34a" />
-        <stop offset="100%" stopColor="#0ea5e9" />
-      </linearGradient>
-    </defs>
-  </svg>
-);
 
 const CatIllustration = () => (
   <svg viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" width="180" height="180">
@@ -170,9 +154,10 @@ export default function LoginPage() {
         <div className="mauth-left__blob mauth-left__blob--2" />
 
         <div className="mauth-left__logo">
-          <LogoSVG />
-          <span className="mauth-left__logo-text">Veterinario</span>
+          <img src={logoImg} alt="PetCare Clinic Logo" width="36" height="36" style={{ objectFit: 'contain', display: 'block' }} />
+          <span className="mauth-left__logo-text">PetCare Clinic</span>
         </div>
+
 
         <div className="mauth-left__content">
           <h1 className="mauth-left__title">
@@ -180,7 +165,7 @@ export default function LoginPage() {
             <span>Kembali!</span>
           </h1>
           <p className="mauth-left__subtitle">
-            Masuk ke akun Anda untuk mengakses layanan lengkap Veterinario.
+            Masuk ke akun Anda untuk mengakses layanan lengkap PetCare Clinic.
           </p>
           <div className="mauth-left__illustration">
             <div className="mauth-left__pet-card">
@@ -207,7 +192,7 @@ export default function LoginPage() {
           ))}
         </div>
 
-        <div className="mauth-left__footer">© 2025 Veterinario. All rights reserved.</div>
+        <div className="mauth-left__footer">© 2025 PetCare Clinic. All rights reserved.</div>
       </div>
 
       {/* RIGHT PANEL */}

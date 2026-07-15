@@ -60,7 +60,7 @@ export default function ProblemSolutionSection() {
             <span className="section-title--gradient">Pemilik Hewan</span>
           </h2>
           <p className="section-subtitle">
-            Kami memahami tantangan nyata Anda. Itulah mengapa Veterinario hadir
+            Kami memahami tantangan nyata Anda. Itulah mengapa PetCare Clinic hadir
             dengan solusi yang tepat sasaran — bukan sekadar klinik biasa.
           </p>
         </div>
@@ -88,7 +88,7 @@ export default function ProblemSolutionSection() {
         {/* Transition Arrow */}
         <div className="problem-arrow scroll-animate" aria-hidden="true">
           <div className="problem-arrow__line" />
-          <div className="problem-arrow__badge">Solusi Veterinario</div>
+          <div className="problem-arrow__badge">Solusi PetCare Clinic</div>
           <div className="problem-arrow__line" />
         </div>
 

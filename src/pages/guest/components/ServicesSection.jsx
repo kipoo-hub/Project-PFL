@@ -14,7 +14,7 @@ const SERVICES = [
     price: 'Rp 75.000',
     checklist: ["Pemeriksaan fisik", "Diagnosis", "Resep obat", "Saran perawatan lanjutan"],
     fullDescription: [
-      "Layanan Konsultasi Dokter Hewan di Veterinario memberikan kenyamanan maksimal bagi pemilik hewan untuk mendiskusikan berbagai keluhan kesehatan peliharaan. Tim dokter kami yang berpengalaman akan melakukan pemeriksaan secara menyeluruh dan sabar.",
+      "Layanan Konsultasi Dokter Hewan di PetCare Clinic memberikan kenyamanan maksimal bagi pemilik hewan untuk mendiskusikan berbagai keluhan kesehatan peliharaan. Tim dokter kami yang berpengalaman akan melakukan pemeriksaan secara menyeluruh dan sabar.",
       "Dengan didukung oleh peralatan diagnosis yang modern, kami memastikan diagnosis yang tepat untuk menunjang kesehatan optimal hewan kesayangan Anda. Dokter kami juga akan memberikan edukasi dan saran perawatan harian pasca konsultasi."
     ]
   },
@@ -78,7 +78,7 @@ const SERVICES = [
     price: 'Rp 500.000',
     checklist: ["Anestesi", "Tindakan operasi", "Pemulihan pasca operasi", "Obat-obatan"],
     fullDescription: [
-      "Tindakan bedah di Veterinario dilakukan di bawah standar operasional medis yang sangat ketat untuk menjamin keselamatan pasien. Tim bedah kami berpengalaman dalam menangani bedah umum, ortopedi, maupun sterilisasi.",
+      "Tindakan bedah di PetCare Clinic dilakukan di bawah standar operasional medis yang sangat ketat untuk menjamin keselamatan pasien. Tim bedah kami berpengalaman dalam menangani bedah umum, ortopedi, maupun sterilisasi.",
       "Kami menggunakan peralatan anestesi modern dan pemantauan detak jantung real-time selama proses operasi. Setelah tindakan, hewan akan ditempatkan di ruang pemulihan khusus pasca operasi dengan pengawasan penuh oleh tim medis kami."
     ]
   },

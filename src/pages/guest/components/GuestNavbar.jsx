@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useMemberAuth } from '../../../context/MemberAuthContext';
-import { supabase } from '../../../lib/supabase';
+import logoImg from '../../../assets/logo.png';
+import '../guest.css';
 
 export default function GuestNavbar() {
-  const { member, isLoggedIn, logout } = useMemberAuth();
+  const { isLoggedIn, logout } = useMemberAuth();
   const [scrolled, setScrolled] = useState(false);
   const [visible, setVisible] = useState(true);
   const [activeSection, setActiveSection] = useState('beranda');
@@ -71,26 +72,12 @@ export default function GuestNavbar() {
         <button
           className="guest-navbar__logo"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          aria-label="Veterinario - Kembali ke atas"
+          aria-label="PetCare Clinic - Kembali ke atas"
         >
           <div className="guest-navbar__logo-icon" aria-hidden="true">
-            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="40" height="40">
-              <circle cx="20" cy="20" r="20" fill="url(#logoGrad)" />
-              <path d="M12 16c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z" fill="white" opacity="0.9"/>
-              <path d="M20 16c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z" fill="white" opacity="0.9"/>
-              <path d="M10 24c0-3.3 2.7-6 6-6h8c3.3 0 6 2.7 6 6v2H10v-2z" fill="white"/>
-              <circle cx="15.5" cy="21" r="1.2" fill="#16a34a" />
-              <circle cx="20" cy="21" r="1.2" fill="#16a34a" />
-              <circle cx="24.5" cy="21" r="1.2" fill="#16a34a" />
-              <defs>
-                <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
-                  <stop offset="0%" stopColor="#16a34a" />
-                  <stop offset="100%" stopColor="#0ea5e9" />
-                </linearGradient>
-              </defs>
-            </svg>
+            <img src={logoImg} alt="PetCare Clinic Logo" width="40" height="40" style={{ objectFit: 'contain', display: 'block' }} />
           </div>
-          <span className="guest-navbar__logo-text">Veterinario</span>
+          <span className="guest-navbar__logo-text">PetCare Clinic</span>
         </button>
 
         {/* Desktop Nav Links */}
@@ -128,23 +115,7 @@ export default function GuestNavbar() {
               <button
                 id="navbar-dashboard-btn"
                 className="guest-btn guest-btn--outline"
-                onClick={async () => {
-                  try {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (!session) { navigate('/member'); return; }
-                    const { data: profile } = await supabase
-                      .from('profiles')
-                      .select('role')
-                      .eq('user_id', session.user.id)
-                      .single();
-                    if (profile?.role === 'admin') navigate('/dashboard');
-                    else navigate('/member');
-                  } catch {
-                    // fallback ke context
-                    if (member?.role === 'admin') navigate('/dashboard');
-                    else navigate('/member');
-                  }
-                }}
+                onClick={() => navigate('/dashboard')}
               >
                 Dashboard
               </button>
@@ -218,23 +189,7 @@ export default function GuestNavbar() {
             </button>
             <button
               className="guest-btn guest-btn--outline guest-navbar__mobile-cta"
-              onClick={async () => {
-                setMobileOpen(false);
-                try {
-                  const { data: { session } } = await supabase.auth.getSession();
-                  if (!session) { navigate('/member'); return; }
-                  const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('user_id', session.user.id)
-                    .single();
-                  if (profile?.role === 'admin') navigate('/dashboard');
-                  else navigate('/member');
-                } catch {
-                  if (member?.role === 'admin') navigate('/dashboard');
-                  else navigate('/member');
-                }
-              }}
+              onClick={() => { setMobileOpen(false); navigate('/dashboard'); }}
             >
               Dashboard
             </button>

@@ -1,261 +1,182 @@
 import React, { useState, useEffect } from 'react';
 import { useMemberAuth } from '../../context/MemberAuthContext';
 import { medicalRecordService } from '../../lib/supabaseService';
+import GuestNavbar from '../guest/components/GuestNavbar';
+import GuestFooter from '../guest/components/GuestFooter';
+import '../guest/guest.css';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const selStyle = { padding: '7px 12px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: '0.8rem', outline: 'none', background: 'white', color: '#1e293b', cursor: 'pointer' };
 
 export default function MemberMedicalRecords() {
   const { member } = useMemberAuth();
-
   const [records, setRecords] = useState([]);
   const [pets, setPets] = useState([]);
   const [years, setYears] = useState([]);
-  
-  // Filters
   const [selectedPet, setSelectedPet] = useState('All');
   const [selectedYear, setSelectedYear] = useState('All');
-
-  // Modal Detail
   const [activeRecord, setActiveRecord] = useState(null);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const loadMedicalRecords = async () => {
-    const memberUser = JSON.parse(localStorage.getItem('memberUser'));
-    if (!memberUser?.id) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const list = await medicalRecordService.getByMemberId(memberUser.id);
-      setRecords(list);
-
-      // Extract unique pets
-      const uniquePets = Array.from(new Set(list.map(r => r.petName))).filter(Boolean);
-      setPets(uniquePets);
-
-      // Extract unique years
-      const uniqueYears = Array.from(new Set(list.map(r => {
-        if (!r.date) return null;
-        return r.date.split('-')[0];
-      }))).filter(Boolean).sort((a, b) => b - a);
-      setYears(uniqueYears);
-    } catch (err) {
-      setError('Gagal memuat rekam medis.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadMedicalRecords();
+    const load = async () => {
+      const memberUser = JSON.parse(localStorage.getItem('memberUser'));
+      if (!memberUser?.id) return;
+      setLoading(true); setError(null);
+      try {
+        const list = await medicalRecordService.getByMemberId(memberUser.id);
+        setRecords(list);
+        setPets(Array.from(new Set(list.map(r => r.petName))).filter(Boolean));
+        setYears(Array.from(new Set(list.map(r => r.date?.split('-')[0]))).filter(Boolean).sort((a, b) => b - a));
+      } catch { setError('Gagal memuat rekam medis.'); }
+      finally { setLoading(false); }
+    };
+    load();
   }, []);
 
-  // Filtering
-  const filteredRecords = records.filter(r => {
+  const filtered = records.filter(r => {
     const matchPet = selectedPet === 'All' || r.petName?.toLowerCase() === selectedPet.toLowerCase();
     const matchYear = selectedYear === 'All' || (r.date && r.date.startsWith(selectedYear));
     return matchPet && matchYear;
   });
 
-  const handleDownloadPDF = (record) => {
-    alert(`Mengunduh Rekam Medis PDF untuk ${record.petName} (ID: ${record.id})...\nSimulasi unduhan berhasil diselesaikan.`);
-  };
-
-  if (loading) return <div className="p-8 text-center text-slate-400">Memuat data...</div>;
-  if (error) return <div className="p-8 text-center text-rose-500">{error}</div>;
+  if (loading) return (
+    <div className="guest-page"><GuestNavbar />
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, border: '3px solid #16a34a', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <GuestFooter />
+    </div>
+  );
 
   return (
-    <div className="pb-10">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">Riwayat Rekam Medis</h1>
-        <p className="text-slate-500 text-sm mt-1">Lihat riwayat klinis lengkap, diagnosis dokter, dan resep obat peliharaan Anda.</p>
-      </div>
+    <div className="guest-page">
+      <GuestNavbar />
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } } tr.med-row:hover td { background: #f8fafc !important; }`}</style>
 
-      {/* Filters */}
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-4 mb-6 flex flex-wrap gap-4 items-center">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pilih Peliharaan:</span>
-          <select 
-            value={selectedPet}
-            onChange={(e) => setSelectedPet(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none focus:border-emerald-500"
-          >
-            <option value="All">Semua Peliharaan</option>
-            {pets.map(p => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-        </div>
+      <main style={{ paddingTop: 96, paddingBottom: 80, background: '#f4f7fc', minHeight: '60vh' }}>
+        <div className="guest-container">
+          {/* Header */}
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#16a34a', marginBottom: 6 }}>Riwayat Klinis</div>
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>Rekam Medis</h1>
+            <p style={{ color: '#64748b', fontSize: '0.88rem', margin: 0 }}>Riwayat klinis lengkap, diagnosis dokter, dan resep obat peliharaan Anda.</p>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tahun Kunjungan:</span>
-          <select 
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none focus:border-emerald-500"
-          >
-            <option value="All">Semua Tahun</option>
-            {years.map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+          {error && <div style={{ padding: 14, background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: 12, color: '#e11d48', marginBottom: 16, fontSize: '0.83rem' }}>{error}</div>}
 
-      {/* Medical List */}
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
-                <th className="p-4 text-xs uppercase tracking-wider">No. Rekam</th>
-                <th className="p-4 text-xs uppercase tracking-wider">Nama Pasien</th>
-                <th className="p-4 text-xs uppercase tracking-wider">Tanggal Periksa</th>
-                <th className="p-4 text-xs uppercase tracking-wider">Dokter Hewan</th>
-                <th className="p-4 text-xs uppercase tracking-wider">Diagnosis</th>
-                <th className="p-4 text-xs uppercase tracking-wider text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 font-medium">
-              {filteredRecords.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="p-8 text-center text-slate-400">
-                    Tidak ada riwayat rekam medis yang cocok.
-                  </td>
-                </tr>
-              ) : (
-                filteredRecords.map((rec) => (
-                  <tr key={rec.id} className="hover:bg-slate-50/30 text-slate-700">
-                    <td className="p-4">
-                      <span className="font-semibold text-slate-500 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded">{rec.id}</span>
-                    </td>
-                    <td className="p-4 font-bold text-slate-800">{rec.petName}</td>
-                    <td className="p-4 text-slate-500">{rec.date}</td>
-                    <td className="p-4 font-semibold text-slate-600">{rec.doctor}</td>
-                    <td className="p-4 text-slate-600 max-w-[200px] truncate" title={rec.diagnosis}>
-                      {rec.diagnosis}
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex gap-2 justify-end">
-                        <button
-                          onClick={() => setActiveRecord(rec)}
-                          className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-xs transition"
-                        >
-                          👁️ Rincian
-                        </button>
-                        <button
-                          onClick={() => handleDownloadPDF(rec)}
-                          className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 font-semibold rounded-lg text-xs transition"
-                          title="Simpan PDF"
-                        >
-                          📥 PDF
-                        </button>
-                      </div>
-                    </td>
+          {/* Filter Row */}
+          <div style={{ background: 'white', borderRadius: 14, border: '1px solid #edf2f7', padding: '14px 18px', marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Peliharaan:</span>
+              <select value={selectedPet} onChange={e => setSelectedPet(e.target.value)} style={selStyle}>
+                <option value="All">Semua Peliharaan</option>
+                {pets.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tahun:</span>
+              <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} style={selStyle}>
+                <option value="All">Semua Tahun</option>
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>{filtered.length} rekam medis ditemukan</span>
+          </div>
+
+          {/* Table */}
+          <div style={{ background: 'white', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 6px rgba(15,23,42,0.05)' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
+                    {['No. Rekam', 'Nama Pasien', 'Tanggal Periksa', 'Dokter Hewan', 'Diagnosis', 'Aksi'].map((h, i) => (
+                      <th key={h} style={{ padding: '12px 16px', textAlign: i === 5 ? 'right' : 'left', fontWeight: 700, fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr><td colSpan={6} style={{ padding: '40px 16px', textAlign: 'center', color: '#94a3b8' }}>
+                      <div style={{ fontSize: '2rem', marginBottom: 8 }}>📋</div>
+                      Tidak ada rekam medis yang cocok dengan filter ini.
+                    </td></tr>
+                  ) : filtered.map(rec => (
+                    <tr key={rec.id} className="med-row">
+                      <td style={{ padding: '12px 16px', borderBottom: '1px solid #f8fafc' }}>
+                        <span style={{ fontWeight: 600, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem' }}>{rec.id}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', borderBottom: '1px solid #f8fafc', fontWeight: 700, color: '#1e293b' }}>{rec.petName}</td>
+                      <td style={{ padding: '12px 16px', borderBottom: '1px solid #f8fafc', color: '#64748b' }}>{rec.date}</td>
+                      <td style={{ padding: '12px 16px', borderBottom: '1px solid #f8fafc', fontWeight: 600, color: '#475569' }}>{rec.doctor}</td>
+                      <td style={{ padding: '12px 16px', borderBottom: '1px solid #f8fafc', color: '#475569', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={rec.diagnosis}>{rec.diagnosis}</td>
+                      <td style={{ padding: '12px 16px', borderBottom: '1px solid #f8fafc', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button onClick={() => setActiveRecord(rec)} style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: '#f0fdf4', color: '#16a34a', fontWeight: 700, fontSize: '0.72rem', cursor: 'pointer' }}>👁️ Rincian</button>
+                          <button onClick={() => alert(`Simulasi unduh PDF ${rec.petName}`)} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', color: '#64748b', fontWeight: 600, fontSize: '0.72rem', cursor: 'pointer' }}>📥 PDF</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
 
-      {/* Detail Record Modal */}
+      {/* Detail Modal */}
       {activeRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setActiveRecord(null)}></div>
-
-          {/* Modal Container */}
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl relative z-10 overflow-y-auto max-h-[90vh] border border-slate-100">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-6">
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={() => setActiveRecord(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'relative', zIndex: 10, background: 'white', borderRadius: 20, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0' }}>
+            <div style={{ padding: '20px 24px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <h3 className="text-lg font-bold text-slate-800">Detail Rekam Medis Pasien</h3>
-                <p className="text-slate-400 text-xs mt-0.5">ID Rekam Medis: {activeRecord.id}</p>
+                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a' }}>Detail Rekam Medis</div>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 2 }}>ID: {activeRecord.id}</div>
               </div>
-              <button 
-                onClick={() => setActiveRecord(null)}
-                className="text-slate-400 hover:text-slate-600 text-xl font-bold"
-              >
-                ✕
-              </button>
+              <button onClick={() => setActiveRecord(null)} style={{ width: 30, height: 30, border: '1px solid #e2e8f0', borderRadius: 8, background: 'white', cursor: 'pointer', color: '#64748b' }}>✕</button>
             </div>
-
-            {/* Content info */}
-            <div className="space-y-5">
-              {/* Pet & Doctor Meta */}
-              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100/50 text-sm font-medium">
-                <div>
-                  <span className="block text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Nama Peliharaan</span>
-                  <span className="text-slate-800 font-bold">{activeRecord.petName}</span>
-                </div>
-                <div>
-                  <span className="block text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Dokter Pemeriksa</span>
-                  <span className="text-slate-800 font-bold">{activeRecord.doctor}</span>
-                </div>
-                <div>
-                  <span className="block text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Tanggal Periksa</span>
-                  <span className="text-slate-500 font-semibold">{activeRecord.date}</span>
-                </div>
-                <div>
-                  <span className="block text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">ID Registrasi</span>
-                  <span className="text-slate-500 font-semibold">{activeRecord.id}</span>
-                </div>
-              </div>
-
-              {/* Diagnosis */}
-              <div className="space-y-1">
-                <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Diagnosis Utama</span>
-                <div className="text-sm font-bold text-slate-800 bg-emerald-50/10 border border-emerald-100 p-3 rounded-xl">
-                  {activeRecord.diagnosis}
-                </div>
-              </div>
-
-              {/* Action & Treatment */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Tindakan Medis</span>
-                  <div className="text-xs text-slate-600 bg-slate-50 border p-3 rounded-xl leading-relaxed min-h-[80px]">
-                    {activeRecord.action}
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid #edf2f7' }}>
+                {[['Nama Peliharaan', activeRecord.petName], ['Dokter Pemeriksa', activeRecord.doctor], ['Tanggal Periksa', activeRecord.date], ['ID Registrasi', activeRecord.id]].map(([k, v]) => (
+                  <div key={k}>
+                    <div style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94a3b8', marginBottom: 3 }}>{k}</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.83rem', color: '#1e293b' }}>{v}</div>
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Terapi / Resep Obat</span>
-                  <div className="text-xs text-slate-600 bg-slate-50 border p-3 rounded-xl leading-relaxed min-h-[80px]">
-                    {activeRecord.treatment}
-                  </div>
-                </div>
+                ))}
               </div>
-
-              {/* Notes */}
+              <div>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 6 }}>Diagnosis Utama</div>
+                <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, fontWeight: 700, fontSize: '0.85rem', color: '#166534' }}>{activeRecord.diagnosis}</div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {[['Tindakan Medis', activeRecord.action], ['Terapi / Resep', activeRecord.treatment]].map(([k, v]) => (
+                  <div key={k}>
+                    <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 6 }}>{k}</div>
+                    <div style={{ padding: '10px 12px', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, fontSize: '0.78rem', color: '#475569', lineHeight: 1.6, minHeight: 70 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
               {activeRecord.notes && (
-                <div className="space-y-1">
-                  <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Catatan Dokter Hewan</span>
-                  <div className="text-xs text-slate-600 bg-amber-50/40 border border-amber-100/30 p-3.5 rounded-xl italic leading-relaxed">
-                    "{activeRecord.notes}"
-                  </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 6 }}>Catatan Dokter</div>
+                  <div style={{ padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, fontSize: '0.78rem', color: '#92400e', fontStyle: 'italic' }}>"{activeRecord.notes}"</div>
                 </div>
               )}
             </div>
-
-            {/* Modal Actions */}
-            <div className="flex gap-3 pt-5 border-t border-slate-100 mt-8">
-              <button 
-                onClick={() => setActiveRecord(null)}
-                className="flex-1 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-sm transition"
-              >
-                Tutup Rincian
-              </button>
-              <button 
-                onClick={() => handleDownloadPDF(activeRecord)}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition shadow-sm shadow-emerald-100 flex items-center justify-center gap-2"
-              >
-                📥 Unduh Resep (PDF)
-              </button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '14px 24px', borderTop: '1px solid #f1f5f9' }}>
+              <button onClick={() => setActiveRecord(null)} style={{ padding: '10px', borderRadius: 12, border: '1.5px solid #e2e8f0', background: 'white', color: '#475569', fontWeight: 700, fontSize: '0.83rem', cursor: 'pointer' }}>Tutup</button>
+              <button onClick={() => alert(`PDF ${activeRecord.petName}`)} style={{ padding: '10px', borderRadius: 12, border: 'none', background: '#16a34a', color: 'white', fontWeight: 700, fontSize: '0.83rem', cursor: 'pointer' }}>📥 Unduh PDF</button>
             </div>
           </div>
         </div>
       )}
+      <GuestFooter />
     </div>
   );
 }

@@ -178,7 +178,7 @@ export default function FeatureSection() {
         {/* Bottom CTA */}
         <div className="feature-bottom-cta scroll-animate">
           <p className="feature-bottom-cta__text">
-            Semua fitur ini tersedia <strong>gratis</strong> untuk setiap member Veterinario
+            Semua fitur ini tersedia <strong>gratis</strong> untuk setiap member PetCare Clinic
           </p>
           <button
             id="feature-cta-register"

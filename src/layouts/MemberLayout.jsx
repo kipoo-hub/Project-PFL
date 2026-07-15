@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
 import { useMemberAuth } from '../context/MemberAuthContext';
-import { vaccineService, jadwalService, chatService, ticketService } from '../lib/supabaseService';
+import { vaccineService, jadwalService, chatService } from '../lib/supabaseService';
+import logoImg from '../assets/logo.png';
 import '../pages/member/member-dashboard.css';
 
 const NAV_ITEMS_TEMPLATE = [
@@ -11,31 +12,11 @@ const NAV_ITEMS_TEMPLATE = [
   { id: 'vaccines', icon: '💉', label: 'Jadwal Vaksinasi', path: '/member/vaksin' },
   { id: 'records', icon: '📋', label: 'Rekam Medis', path: '/member/rekam-medis' },
   { id: 'chat', icon: '💬', label: 'Chat Dokter', path: '/member/chat' },
-  { id: 'tiket', icon: '🎫', label: 'Tiket Keluhan', path: '/member/tiket' },
-  { id: 'antrian', icon: '🔢', label: 'Antrian', path: '/member/antrian' },
-  { id: 'billing', icon: '🧾', label: 'Riwayat Tagihan', path: '/member/tagihan' },
   { id: 'profile', icon: '👤', label: 'Profil Saya', path: '/member/profil' },
 ];
 
-const BOTTOM_NAV = ['membership', 'pets', 'antrian', 'tiket', 'profile'];
+const BOTTOM_NAV = ['membership', 'pets', 'appointments', 'chat', 'profile'];
 
-const LogoSVG = () => (
-  <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
-    <circle cx="20" cy="20" r="20" fill="url(#mdLogoGrad)" />
-    <path d="M12 16c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z" fill="white" opacity="0.9"/>
-    <path d="M20 16c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z" fill="white" opacity="0.9"/>
-    <path d="M10 24c0-3.3 2.7-6 6-6h8c3.3 0 6 2.7 6 6v2H10v-2z" fill="white"/>
-    <circle cx="15.5" cy="21" r="1.2" fill="#16a34a" />
-    <circle cx="20" cy="21" r="1.2" fill="#16a34a" />
-    <circle cx="24.5" cy="21" r="1.2" fill="#16a34a" />
-    <defs>
-      <linearGradient id="mdLogoGrad" x1="0" y1="0" x2="40" y2="40">
-        <stop offset="0%" stopColor="#16a34a" />
-        <stop offset="100%" stopColor="#0ea5e9" />
-      </linearGradient>
-    </defs>
-  </svg>
-);
 
 export default function MemberLayout() {
   const { member, logout } = useMemberAuth();
@@ -46,16 +27,15 @@ export default function MemberLayout() {
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [apptsCount, setApptsCount] = useState(0);
   const [chatsCount, setChatsCount] = useState(0);
-  const [ticketsCount, setTicketsCount] = useState(0);
 
   const loadCounts = async () => {
     if (!member) return;
-    const email = member.email || 'demo@email.com';
-    const myEmail = email === 'demo@email.com' ? 'budi@email.com' : email;
+    const email = member.email;
+    if (!email) return;
 
     try {
       // Vaccines
-      const vacList = await vaccineService.getByEmail(myEmail);
+      const vacList = await vaccineService.getByEmail(email);
       setVaccines(vacList);
 
       // Appointments
@@ -67,11 +47,6 @@ export default function MemberLayout() {
       const mChats = await chatService.getByMemberId(member.id);
       const totalUnread = mChats.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
       setChatsCount(totalUnread);
-
-      // Tickets
-      const tList = await ticketService.getByEmail(myEmail);
-      const activeTickets = tList.filter(t => t.status === 'Baru' || t.status === 'Dalam Proses').length;
-      setTicketsCount(activeTickets);
     } catch (err) {
       console.error('Failed to load MemberLayout counts:', err);
     }
@@ -93,8 +68,7 @@ export default function MemberLayout() {
 
   const memberVaccines = vaccines.filter(v => 
     (member?.email && v.email?.toLowerCase() === member.email.toLowerCase()) ||
-    (member?.name && v.ownerName?.toLowerCase() === member.name.toLowerCase()) ||
-    (member?.email === 'demo@email.com' && v.email === 'budi@email.com')
+    (member?.name && v.ownerName?.toLowerCase() === member.name.toLowerCase())
   );
 
   const dueVaccines = memberVaccines.filter(v => v.daysRemaining <= 7 && v.status === 'Belum Diingatkan');
@@ -121,7 +95,6 @@ export default function MemberLayout() {
     if (item.id === 'vaccines') badge = dueVaccines.length > 0 ? dueVaccines.length : null;
     if (item.id === 'appointments') badge = apptsCount > 0 ? apptsCount : null;
     if (item.id === 'chat') badge = chatsCount > 0 ? chatsCount : null;
-    if (item.id === 'tiket') badge = ticketsCount > 0 ? ticketsCount : null;
     return { ...item, badge };
   });
 
@@ -137,8 +110,8 @@ export default function MemberLayout() {
         {/* Logo + Member Card */}
         <div className="md-sidebar__header">
           <div className="md-sidebar__logo">
-            <LogoSVG />
-            <span className="md-sidebar__logo-text">Veterinario</span>
+            <img src={logoImg} alt="PetCare Clinic Logo" width="32" height="32" style={{ objectFit: 'contain', display: 'block' }} />
+            <span className="md-sidebar__logo-text">PetCare Clinic</span>
           </div>
           <div className="md-sidebar__member-card">
             <div className="md-sidebar__avatar">{initials}</div>

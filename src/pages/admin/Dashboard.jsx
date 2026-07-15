@@ -9,10 +9,10 @@ import {
   TrendingUp, TrendingDown, Clock, CheckCircle2,
   XCircle, ArrowUpRight,
 } from 'lucide-react';
-import PageHeader from '../components/PageHeader';
-import { monthlyAppointments, revenueData, speciesData, recentAppointments } from '../data/dashboard';
-import { dashboardService } from '../lib/supabaseService';
-import { supabase } from '../lib/supabase';
+import PageHeader from '../../components/PageHeader';
+import { monthlyAppointments, revenueData, speciesData, recentAppointments } from '../../data/dashboard';
+import { dashboardService } from '../../lib/supabaseService';
+import { supabase } from '../../lib/supabase';
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const KpiCard = ({ title, value, subtitle, icon: Icon, iconBg, iconColor, trend, trendValue }) => (
@@ -86,10 +86,10 @@ const KpiCard = ({ title, value, subtitle, icon: Icon, iconBg, iconColor, trend,
 
 const StatusBadge = ({ status }) => {
   const config = {
-    'Selesai':           { bg: '#e6fcf5', color: '#0ca678', icon: CheckCircle2 },
-    'Sedang Berjalan':   { bg: '#eef2ff', color: '#3b5bdb', icon: Clock },
-    'Menunggu':          { bg: '#fff4e6', color: '#f76707', icon: Clock },
-    'Dibatalkan':        { bg: '#fff5f5', color: '#e03131', icon: XCircle },
+    'Selesai': { bg: '#e6fcf5', color: '#0ca678', icon: CheckCircle2 },
+    'Sedang Berjalan': { bg: '#eef2ff', color: '#3b5bdb', icon: Clock },
+    'Menunggu': { bg: '#fff4e6', color: '#f76707', icon: Clock },
+    'Dibatalkan': { bg: '#fff5f5', color: '#e03131', icon: XCircle },
   };
   const c = config[status] || { bg: '#f3f4f6', color: '#6b7280', icon: Clock };
   const Icon = c.icon;
@@ -276,7 +276,7 @@ const Dashboard = () => {
       background: 'var(--bg-app)',
     }}>
       <PageHeader
-        title="Dashboard Veterinario"
+        title="Dashboard PetCare Clinic"
         subtitle="Selamat datang kembali, Dr. Rizal! Berikut ringkasan klinik hari ini."
       />
 

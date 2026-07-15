@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { vaccineService, ticketService, slaService } from '../lib/supabaseService';
 import { useMemberAuth } from '../context/MemberAuthContext';
+import logoImg from '../assets/logo.png';
 
 // ── CRM Pilar Configuration ─────────────────────────────────────────────────
 const CRM_PILLARS = {
@@ -199,13 +200,11 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
         {/* ── Brand ── */}
         <div className="px-4 pt-5 pb-4 shrink-0">
           <Link to="/" className="flex items-center gap-3 rounded-xl h-12 px-2 hover:bg-slate-50 transition-colors duration-150">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#4FD1C5] shadow-md shadow-[rgba(79,209,197,0.3)]">
-              <PawPrint size={17} className="text-white" strokeWidth={2.2} />
-            </div>
+            <img src={logoImg} alt="PetCare Clinic Logo" width="36" height="36" style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }} />
             {!isCollapsed && (
               <div className="flex flex-col min-w-0 leading-none gap-0.5">
                 <span className="font-bold text-[15px] text-slate-800 tracking-tight">
-                  PetCare<span className="text-[#4FD1C5]">.</span>
+                  PetCare Clinic
                 </span>
                 <span className="text-[9.5px] font-semibold uppercase tracking-[0.12em] text-[#A0AEC0]">
                   Management System
@@ -355,7 +354,7 @@ const AppSidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
           {/* User card */}
           <div className="flex items-center w-full">
             <button
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate('/dashboard')}
               className="flex items-center h-12 w-full px-3 gap-3 rounded-xl hover:bg-slate-50 transition-all duration-150 group cursor-pointer outline-none"
               title={isCollapsed ? user.name : undefined}
             >

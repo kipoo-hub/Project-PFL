@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import PageHeader from '../components/PageHeader';
+import PageHeader from '../../components/PageHeader';
 import { Search, Plus, PawPrint, X, Check } from 'lucide-react';
-import { speciesColors } from '../data/pasien';
-import { pasienService } from '../lib/supabaseService';
+import { speciesColors } from '../../data/pasien';
+import { pasienService } from '../../lib/supabaseService';
 
 const StatusBadge = ({ status }) => {
   const cfg = {
-    Aktif:  { bg: '#C6F6D5', color: '#48BB78' },
+    Aktif: { bg: '#C6F6D5', color: '#48BB78' },
     Kritis: { bg: '#FED7D7', color: '#F56565' },
     Sembuh: { bg: '#E6FFFA', color: '#4FD1C5' },
   };
@@ -39,7 +39,7 @@ const Modal = ({ show, onClose, onSave }) => {
           <div>
             <label style={labelStyle}>Spesies</label>
             <select name="spesies" value={form.spesies} onChange={handleChange} style={inputStyle}>
-              {['Anjing','Kucing','Burung','Kelinci','Lainnya'].map(s => <option key={s}>{s}</option>)}
+              {['Anjing', 'Kucing', 'Burung', 'Kelinci', 'Lainnya'].map(s => <option key={s}>{s}</option>)}
             </select>
           </div>
           <div><label style={labelStyle}>Ras</label><input name="ras" value={form.ras} onChange={handleChange} style={inputStyle} placeholder="Golden Retriever" /></div>
@@ -108,9 +108,9 @@ const Pasien = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
         {[
           { label: 'Total Pasien', value: patients.length, color: '#319795' },
-          { label: 'Pasien Aktif', value: patients.filter(p=>p.status==='Aktif').length, color: '#48BB78' },
-          { label: 'Kasus Kritis', value: patients.filter(p=>p.status==='Kritis').length, color: '#F56565' },
-          { label: 'Sudah Sembuh', value: patients.filter(p=>p.status==='Sembuh').length, color: '#667EEA' },
+          { label: 'Pasien Aktif', value: patients.filter(p => p.status === 'Aktif').length, color: '#48BB78' },
+          { label: 'Kasus Kritis', value: patients.filter(p => p.status === 'Kritis').length, color: '#F56565' },
+          { label: 'Sudah Sembuh', value: patients.filter(p => p.status === 'Sembuh').length, color: '#667EEA' },
         ].map(s => (
           <div key={s.label} style={{ background: 'white', borderRadius: 16, padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ fontSize: 12, color: '#A0AEC0', fontWeight: 'bold', textTransform: 'uppercase', tracking: '0.05em' }}>{s.label}</div>
@@ -130,7 +130,7 @@ const Pasien = () => {
             </div>
             {/* Filter */}
             <select id="pasien-filter-spesies" value={filterSpesies} onChange={e => setFilterSpesies(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13, color: 'var(--text-secondary)', background: '#F8F9FA', outline: 'none' }}>
-              {['Semua','Anjing','Kucing','Burung','Kelinci','Lainnya'].map(s => <option key={s}>{s}</option>)}
+              {['Semua', 'Anjing', 'Kucing', 'Burung', 'Kelinci', 'Lainnya'].map(s => <option key={s}>{s}</option>)}
             </select>
           </div>
           <button id="pasien-add-btn" onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 12, border: 'none', background: '#4FD1C5', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(79,209,197,0.3)' }}>
@@ -148,7 +148,7 @@ const Pasien = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#fafafa' }}>
-                  {['ID','Hewan','Spesies','Pemilik','Telepon','Kunjungan Terakhir','Status'].map(col => (
+                  {['ID', 'Hewan', 'Spesies', 'Pemilik', 'Telepon', 'Kunjungan Terakhir', 'Status'].map(col => (
                     <th key={col} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border-color)', whiteSpace: 'nowrap' }}>{col}</th>
                   ))}
                 </tr>

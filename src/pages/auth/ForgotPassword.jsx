@@ -1,22 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import logoImg from '../../assets/logo.png';
 import '../../pages/member/auth/member-auth.css';
 
-const LogoSVG = () => (
-  <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
-    <circle cx="20" cy="20" r="20" fill="url(#fpGrad)" />
-    <path d="M12 16c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z" fill="white" opacity="0.9"/>
-    <path d="M20 16c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z" fill="white" opacity="0.9"/>
-    <path d="M10 24c0-3.3 2.7-6 6-6h8c3.3 0 6 2.7 6 6v2H10v-2z" fill="white"/>
-    <defs>
-      <linearGradient id="fpGrad" x1="0" y1="0" x2="40" y2="40">
-        <stop offset="0%" stopColor="#16a34a" />
-        <stop offset="100%" stopColor="#0ea5e9" />
-      </linearGradient>
-    </defs>
-  </svg>
-);
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -59,9 +46,10 @@ export default function ForgotPassword() {
         <div className="mauth-left__blob mauth-left__blob--2" />
 
         <div className="mauth-left__logo">
-          <LogoSVG />
-          <span className="mauth-left__logo-text">Veterinario</span>
+          <img src={logoImg} alt="PetCare Clinic Logo" width="36" height="36" style={{ objectFit: 'contain', display: 'block' }} />
+          <span className="mauth-left__logo-text">PetCare Clinic</span>
         </div>
+
 
         <div className="mauth-left__content">
           <h1 className="mauth-left__title">
@@ -69,7 +57,7 @@ export default function ForgotPassword() {
             <span>Password?</span>
           </h1>
           <p className="mauth-left__subtitle">
-            Tenang, kami akan bantu Anda mereset password akun Veterinario Anda.
+            Tenang, kami akan bantu Anda mereset password akun PetCare Clinic Anda.
           </p>
           <div className="mauth-left__illustration" style={{ opacity: 0.5 }}>
             <svg viewBox="0 0 200 200" fill="none" width="160" height="160">
@@ -101,7 +89,7 @@ export default function ForgotPassword() {
           ))}
         </div>
 
-        <div className="mauth-left__footer">© 2025 Veterinario. All rights reserved.</div>
+        <div className="mauth-left__footer">© 2025 PetCare Clinic. All rights reserved.</div>
       </div>
 
       {/* RIGHT PANEL */}

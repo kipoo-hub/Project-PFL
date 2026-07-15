@@ -163,6 +163,7 @@ export const leadService = {
       phone: l.phone,
       email: l.email,
       isNewToday: l.is_new_today,
+      createdAt: l.created_at,
     }));
   },
 
@@ -274,13 +275,15 @@ export const ticketService = {
       priority: t.priority,
       status: t.status,
       createdAt: t.created_at?.split('T')[0],
-      conversations: (t.ticket_conversations || []).map(c => ({
-        id: c.id,
-        role: c.role,
-        senderName: c.sender_name,
-        message: c.message,
-        time: new Date(c.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }),
-      })).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+      conversations: (t.ticket_conversations || [])
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        .map(c => ({
+          id: c.id,
+          role: c.role,
+          senderName: c.sender_name,
+          message: c.message,
+          time: new Date(c.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }),
+        })),
     }));
   },
 
@@ -413,20 +416,18 @@ export const queueService = {
   },
 
   add: async (data) => {
-    // Get next queue number
-    const { data: existing } = await supabase
+    // Gunakan count query untuk mengurangi risiko race condition.
+    // Untuk produksi, tambahkan UNIQUE constraint di kolom queue_number
+    // dan buat Supabase RPC untuk atomic increment.
+    const { count, error: countError } = await supabase
       .from('queues')
-      .select('queue_number')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .select('*', { count: 'exact', head: true });
 
-    let nextNum = 1;
-    if (existing?.queue_number) {
-      const match = existing.queue_number.match(/\d+/);
-      if (match) nextNum = parseInt(match[0]) + 1;
+    if (countError) {
+      handleError('queueService.add.count', countError);
     }
-    const queueNumber = `A-${String(nextNum).padStart(3, '0')}`;
+
+    const queueNumber = `A-${String((count || 0) + 1).padStart(3, '0')}`;
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} WIB`;
 
@@ -704,7 +705,7 @@ export const pasienService = {
       pemilik: p.pemilik,
       telepon: p.telepon,
       email: p.email,
-      kunjunganTerakhir: p.tanggal_lahir,
+      kunjunganTerakhir: p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID') : '-',
       status: p.status,
       berat: p.berat,
       foto: p.foto,
